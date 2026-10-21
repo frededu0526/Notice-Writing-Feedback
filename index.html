@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>실시간 PDF 자료 조회 플랫폼</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- pdf-lib CDN -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <!-- pdfjs-dist CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+  <div class="max-w-4xl mx-auto p-6 space-y-8">
+    
+    <!-- Header -->
+    <header class="text-center py-6 border-b border-slate-200">
+      <h1 class="text-3xl font-bold text-slate-900">실시간 PDF 자료 조회 플랫폼</h1>
+      <p class="text-slate-500 mt-2 text-sm">업로드된 자료는 5분 동안만 조회 가능합니다.</p>
+    </header>
+
+    <!-- 교사 영역 -->
+    <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h2 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
+          👨‍🏫 교사 전용 업로드
+        </h2>
+        <input type="password" id="teacherPw" placeholder="교사 인증번호(기본: 1234)" 
+               class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+
+      <!-- 드래그 앤 드롭 영역 -->
+      <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-400 transition cursor-pointer bg-slate-50">
+        <input type="file" id="pdfFile" accept="application/pdf" class="hidden">
+        <p class="text-slate-600 font-medium">PDF 파일을 이곳에 드래그하거나 클릭하여 선택하세요.</p>
+        <p id="fileName" class="text-sm text-indigo-600 mt-2 font-semibold"></p>
+      </div>
+
+      <!-- 상태 및 진행률 -->
+      <div id="progressArea" class="hidden space-y-2">
+        <div class="w-full bg-slate-200 rounded-full h-2.5">
+          <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full w-0 transition-all duration-300"></div>
+        </div>
+        <p id="statusText" class="text-xs text-slate-500 text-center">처리 중...</p>
+      </div>
+
+      <button id="uploadBtn" onclick="processAndUpload()" 
+              class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition shadow-md">
+        분할 및 실시간 공개 시작
+      </button>
+    </section>
+
+    <!-- 학생 영역 -->
+    <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <h2 class="text-xl font-bold text-emerald-600 border-b pb-3 flex items-center gap-2">
+        🎓 학생 자료 조회
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">학번 (5자리)</label>
+          <input type="text" id="studentId" placeholder="예: 20101" 
+                 class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">이름</label>
+          <input type="text" id="studentName" placeholder="예: 구민서" 
+                 class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+
+      <button onclick="searchPDF()" 
+              class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition shadow-md">
+        내 자료 조회하기
+      </button>
+
+      <!-- 조회 결과 영역 -->
+      <div id="resultArea" class="mt-6 hidden border-t pt-4">
+        <h3 class="font-bold text-slate-800 mb-3">조회 결과</h3>
+        <iframe id="pdfViewer" class="w-full h-96 rounded-xl border border-slate-200"></iframe>
+        <a id="downloadLink" target="_blank" 
+           class="inline-block mt-3 text-sm text-emerald-600 font-semibold underline">
+          새 창에서 PDF 다운로드
+        </a>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. Supabase 설정 (본인 정보로 수정하세요)
+    // ==========================================
+    const SUPABASE_URL = "https://imcdygaaczvbncsylzbg.supabase.co/rest/v1/";
+    const SUPABASE_ANON_KEY = "sb_publishable_kpyNd64pNtkCeSj_3mawlQ_N9wI1ctF";
+    
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // pdfjs worker 설정
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    // UI 엘리먼트 제어
+    const dropZone = document.getElementById('dropZone');
+    const pdfFileInput = document.getElementById('pdfFile');
+    const fileNameDisplay = document.getElementById('fileName');
+
+    dropZone.addEventListener('click', () => pdfFileInput.click());
+    pdfFileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) fileNameDisplay.textContent = e.target.files[0].name;
+    });
+
+    // ==========================================
+    // 2. PDF 파싱 및 Supabase 업로드 (교사)
+    // ==========================================
+    async function processAndUpload() {
+      const pw = document.getElementById('teacherPw').value;
+      if (pw !== '1234') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
+
+      const file = pdfFileInput.files[0];
+      if (!file) return alert('PDF 파일을 선택해 주세요.');
+
+      const progressArea = document.getElementById('progressArea');
+      const progressBar = document.getElementById('progressBar');
+      const statusText = document.getElementById('statusText');
+      
+      progressArea.classList.remove('hidden');
+      
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const totalPages = pdfDoc.numPages;
+
+        const srcPdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+
+        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+          statusText.textContent = `${pageNum}/${totalPages} 페이지 분석 및 처리 중...`;
+          progressBar.style.width = `${(pageNum / totalPages) * 100}%`;
+
+          // 텍스트 추출 (학번 / 이름 파싱)
+          const page = await pdfDoc.getPage(pageNum);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map(item => item.str).join(' ');
+
+          // 정규식: 5자리 숫자 + 이름(한글 2~4자)
+          const match = pageText.match(/\b(\d{5})\s*([가-힣]{2,4})\b/);
+          
+          if (match) {
+            const studentId = match[1];
+            const studentName = match[2];
+
+            // 단일 페이지 분할
+            const singlePageDoc = await PDFLib.PDFDocument.create();
+            const [copiedPage] = await singlePageDoc.copyPages(srcPdfLibDoc, [pageNum - 1]);
+            singlePageDoc.addPage(copiedPage);
+            const pdfBytes = await singlePageDoc.save();
+
+            // Storage 업로드
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const filePath = `${Date.now()}_${studentId}.pdf`;
+            
+            const { error: uploadError } = await db.storage
+              .from('pdf-files')
+              .upload(filePath, blob, { contentType: 'application/pdf' });
+
+            if (uploadError) throw uploadError;
+
+            // Public URL 가져오기
+            const { data: publicUrlData } = db.storage
+              .from('pdf-files')
+              .getPublicUrl(filePath);
+
+            // DB Insert
+            await db.from('pdf_records').insert({
+              student_id: studentId,
+              student_name: studentName,
+              file_url: publicUrlData.publicUrl
+            });
+          }
+        }
+
+        statusText.textContent = '모든 파일 업로드 완료!';
+        alert('실시간 공개가 완료되었습니다.');
+      } catch (err) {
+        console.error(err);
+        alert('처리 중 오류 발생: ' + err.message);
+      }
+    }
+
+    // ==========================================
+    // 3. 학생 자료 조회 (5분 제한)
+    // ==========================================
+    async function searchPDF() {
+      const studentId = document.getElementById('studentId').value.trim();
+      const studentName = document.getElementById('studentName').value.trim();
+
+      if (!studentId || !studentName) return alert('학번과 이름을 모두 입력해 주세요.');
+
+      // 현재 시각 기준 5분 전
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+      const { data, error } = await db
+        .from('pdf_records')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('student_name', studentName)
+        .gte('created_at', fiveMinutesAgo)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        alert('조회 중 오류가 발생했습니다.');
+        console.error(error);
+        return;
+      }
+
+      const resultArea = document.getElementById('resultArea');
+      if (data && data.length > 0) {
+        const fileUrl = data[0].file_url;
+        document.getElementById('pdfViewer').src = fileUrl;
+        document.getElementById('downloadLink').href = fileUrl;
+        resultArea.classList.remove('hidden');
+      } else {
+        resultArea.classList.add('hidden');
+        alert('최근 5분 이내에 업로드된 본인의 자료가 없습니다.');
+      }
+    }
+  </script>
+</body>
+</html>
