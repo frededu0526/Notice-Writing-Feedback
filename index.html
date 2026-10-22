@@ -1,139 +1,4 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>실시간 PDF 자료 조회 플랫폼</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Supabase JS CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- pdf-lib CDN -->
-  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <!-- pdfjs-dist CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-</head>
-<body class="bg-slate-50 min-h-screen text-slate-800">
-  <div class="max-w-4xl mx-auto p-6 space-y-8">
-    
-    <!-- Header -->
-    <header class="text-center py-6 border-b border-slate-200">
-      <h1 class="text-3xl font-bold text-slate-900">실시간 PDF 자료 조회 플랫폼</h1>
-      <p class="text-slate-500 mt-2 text-sm">업로드된 자료는 5분 동안만 조회 가능합니다.</p>
-    </header>
-
-    <!-- 교사 영역 -->
-    <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-      <div class="flex items-center justify-between border-b pb-3">
-        <h2 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
-          👨‍🏫 교사 전용 업로드
-        </h2>
-        <input type="password" id="teacherPw" placeholder="교사 인증번호" 
-               class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-      </div>
-
-      <!-- 옵션 선택: 페이지 수 분할 -->
-      <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
-        <label for="pagesPerStudent" class="text-sm font-semibold text-slate-700">📄 학생 1명당 페이지 수:</label>
-        <select id="pagesPerStudent" class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          <option value="1">1 페이지씩 분할</option>
-          <option value="2">2 페이지씩 분할</option>
-          <option value="3">3 페이지씩 분할</option>
-          <option value="4" selected>4 페이지씩 분할</option>
-          <option value="5">5 페이지씩 분할</option>
-          <option value="6">6 페이지씩 분할</option>
-          <option value="7">7 페이지씩 분할</option>
-          <option value="8">8 페이지씩 분할</option>
-          <option value="9">9 페이지씩 분할</option>
-          <option value="10">10 페이지씩 분할</option>
-        </select>
-      </div>
-
-      <!-- 드래그 앤 드롭 영역 -->
-      <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-400 transition cursor-pointer bg-slate-50">
-        <input type="file" id="pdfFile" accept="application/pdf" class="hidden">
-        <p class="text-slate-600 font-medium">PDF 파일을 이곳에 드래그하거나 클릭하여 선택하세요.</p>
-        <p id="fileName" class="text-sm text-indigo-600 mt-2 font-semibold"></p>
-      </div>
-
-      <!-- 상태 및 진행률 -->
-      <div id="progressArea" class="hidden space-y-2">
-        <div class="w-full bg-slate-200 rounded-full h-2.5">
-          <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full w-0 transition-all duration-300"></div>
-        </div>
-        <p id="statusText" class="text-xs text-slate-500 text-center">처리 중...</p>
-      </div>
-
-      <button id="uploadBtn" onclick="processAndUpload()" 
-              class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition shadow-md">
-        분할 및 실시간 공개 시작
-      </button>
-    </section>
-
-    <!-- 학생 영역 -->
-    <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
-      <h2 class="text-xl font-bold text-emerald-600 border-b pb-3 flex items-center gap-2">
-        🎓 학생 자료 조회
-      </h2>
-
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-500 mb-1">학번 (4~5자리)</label>
-          <input type="text" id="studentId" placeholder="예: 11001" 
-                 class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-500 mb-1">이름</label>
-          <input type="text" id="studentName" placeholder="예: 홍길동" 
-                 class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
-        </div>
-      </div>
-
-      <button onclick="searchPDF()" 
-              class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition shadow-md">
-        내 자료 조회하기
-      </button>
-
-      <!-- 조회 결과 영역 -->
-      <div id="resultArea" class="mt-6 hidden border-t pt-4">
-        <h3 class="font-bold text-slate-800 mb-3">조회 결과</h3>
-        <iframe id="pdfViewer" class="w-full h-[500px] rounded-xl border border-slate-200"></iframe>
-        <a id="downloadLink" target="_blank" 
-           class="inline-block mt-3 text-sm text-emerald-600 font-semibold underline">
-          새 창에서 PDF 다운로드
-        </a>
-      </div>
-    </section>
-  </div>
-
-  <script>
-    // ==========================================
-    // 1. Supabase 설정
-    // ==========================================
-    const SUPABASE_URL = "https://imcdygaaczvbncsylzbg.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_kpyNd64pNtkCeSj_3mawlQ_N9wI1ctF";
-    const TABLE_NAME = "notice_writing_feedback";
-    
-    const { createClient } = supabase;
-    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // pdfjs worker 설정
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-
-    // UI 엘리먼트 제어
-    const dropZone = document.getElementById('dropZone');
-    const pdfFileInput = document.getElementById('pdfFile');
-    const fileNameDisplay = document.getElementById('fileName');
-
-    dropZone.addEventListener('click', () => pdfFileInput.click());
-    pdfFileInput.addEventListener('change', (e) => {
-      if (e.target.files[0]) fileNameDisplay.textContent = e.target.files[0].name;
-    });
-
-    // ==========================================
-    // 2. PDF 파싱 및 Supabase 업로드 (교사)
-    // ==========================================
-    async function processAndUpload() {
+async function processAndUpload() {
       const pw = document.getElementById('teacherPw').value;
       if (pw !== 'hdh2026') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
 
@@ -163,39 +28,53 @@
           statusText.textContent = `${startPage}~${endPage} 페이지 (학생 ${studentCount}) 분석 및 분할 중...`;
           progressBar.style.width = `${(endPage / totalPages) * 100}%`;
 
-          // 묶음 페이지 전체의 텍스트 추출
-          let combinedText = "";
+          // 1. 해당 묶음 페이지의 모든 글자 추출
+          let textItems = [];
           for (let p = startPage; p <= endPage; p++) {
             const page = await pdfDoc.getPage(p);
             const textContent = await page.getTextContent();
-            combinedText += textContent.items.map(item => item.str).join(' ') + " ";
+            textContent.items.forEach(item => {
+              if (item.str && item.str.trim()) {
+                textItems.push(item.str.trim());
+              }
+            });
           }
 
-          // -----------------------------------------------------------
-          // 🎯 [수정된 파싱 로직] - 공백 쪼개짐 현상 완전 방지
-          // 1. 문서 헤더 단어 제거
-          let cleanText = combinedText.replace(/\d{4}\s*학년도/g, '');
-          cleanText = cleanText.replace(/학년|학번|이름|담임|결재|화담고등학교/g, '');
+          const rawText = textItems.join(' ');
+          console.log(`[${startPage}p 원본 추출 항목]:`, textItems);
 
-          // 2. 공백을 전부 제거한 텍스트 생성 (예: '1 1 0 0 1 강 세 은' -> '11001강세은')
-          let noSpaceText = cleanText.replace(/\s+/g, '');
+          // 2. "2026학년도" 같은 연도 단어 제거
+          let cleanText = rawText.replace(/\d{4}\s*학년도/g, '');
 
-          // 3. 탐색 시도
-          // [1순위] 공백 제거 텍스트에서 4~5자리 숫자 + 한글 2~4자 붙어있는 패턴 탐색
-          let match = noSpaceText.match(/(\d{4,5})([가-힣]{2,4})/);
+          // 3. 만능 파싱 (줄바꿈/특수문자/공백 격파)
+          // 3-1. 먼저 붙어있는 표준 패턴 시도 (예: 10101 홍길동)
+          let match = cleanText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
+          
+          let studentId = "";
+          let studentName = "";
 
-          // [2순위] 1순위 실패 시 기존 일반 띄어쓰기 텍스트에서 탐색
-          if (!match) {
-            match = cleanText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
+          if (match) {
+            studentId = match[1];
+            studentName = match[2];
+          } else {
+            // 3-2. 실패 시: 5자리 숫자(학번)와 2~4자 한글(이름)을 각각 분리 추출
+            // 학번 후보 (2026 제외 4~5자리 숫자)
+            const idMatches = cleanText.match(/\b\d{4,5}\b/g) || [];
+            const validIds = idMatches.filter(id => id !== "2026" && id !== "2025");
+            
+            // 이름 후보 (화담고등학교, 학년도 등 무시 단어 제외 한글 2~4자)
+            const nameMatches = cleanText.match(/[가-힣]{2,4}/g) || [];
+            const validNames = nameMatches.filter(name => 
+              !['화담고등학교', '학년도', '공통영어', '채점결과', '성취기준', '채점기준', '배점'].includes(name)
+            );
+
+            studentId = validIds.length > 0 ? validIds[0] : `Unknown_${studentCount}`;
+            studentName = validNames.length > 0 ? validNames[0] : `미인식_${startPage}페이지`;
           }
 
-          let studentId = match ? match[1] : `Unknown_${studentCount}`;
-          let studentName = match ? match[2] : `미인식_${startPage}페이지`;
+          console.log(`=> 최종 결정: 학번=[${studentId}], 이름=[${studentName}]`);
 
-          console.log(`[${startPage}p 분석 결과]: 학번=${studentId}, 이름=${studentName}`);
-          // -----------------------------------------------------------
-
-          // 지정한 페이지 수 만큼 묶어서 새로운 PDF 생성
+          // 4. PDF 분할 생성
           const chunkPdfDoc = await PDFLib.PDFDocument.create();
           const pageIndexes = [];
           for (let p = startPage - 1; p < endPage; p++) {
@@ -207,7 +86,7 @@
           
           const pdfBytes = await chunkPdfDoc.save();
 
-          // Storage 업로드
+          // 5. Storage 업로드
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
           const filePath = `${Date.now()}_${studentId}_${startPage}.pdf`;
           
@@ -217,12 +96,11 @@
 
           if (uploadError) throw uploadError;
 
-          // Public URL 가져오기
+          // 6. Public URL 및 DB Insert
           const { data: publicUrlData } = db.storage
             .from('pdf-files')
             .getPublicUrl(filePath);
 
-          // DB Insert
           const { error: insertError } = await db.from(TABLE_NAME).insert({
             student_id: studentId,
             student_name: studentName,
@@ -233,50 +111,9 @@
         }
 
         statusText.textContent = '모든 파일 업로드 완료!';
-        alert(`총 ${studentCount}개 항목이 성공적으로 분석되어 업로드되었습니다.`);
+        alert(`총 ${studentCount}개 항목 처리 완료! Supabase를 확인해 보세요.`);
       } catch (err) {
         console.error(err);
         alert('처리 중 오류 발생: ' + err.message);
       }
     }
-
-    // ==========================================
-    // 3. 학생 자료 조회 (5분 제한)
-    // ==========================================
-    async function searchPDF() {
-      const studentId = document.getElementById('studentId').value.trim();
-      const studentName = document.getElementById('studentName').value.trim();
-
-      if (!studentId || !studentName) return alert('학번과 이름을 모두 입력해 주세요.');
-
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-
-      const { data, error } = await db
-        .from(TABLE_NAME)
-        .select('*')
-        .eq('student_id', studentId)
-        .eq('student_name', studentName)
-        .gte('created_at', fiveMinutesAgo)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      if (error) {
-        alert('조회 중 오류가 발생했습니다: ' + error.message);
-        console.error(error);
-        return;
-      }
-
-      const resultArea = document.getElementById('resultArea');
-      if (data && data.length > 0) {
-        const fileUrl = data[0].file_url;
-        document.getElementById('pdfViewer').src = fileUrl;
-        document.getElementById('downloadLink').href = fileUrl;
-        resultArea.classList.remove('hidden');
-      } else {
-        resultArea.classList.add('hidden');
-        alert('최근 5분 이내에 업로드된 본인의 자료가 없습니다.');
-      }
-    }
-  </script>
-</body>
-</html>
