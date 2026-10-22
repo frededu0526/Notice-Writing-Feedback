@@ -18,8 +18,8 @@
     
     <!-- Header -->
     <header class="text-center py-6 border-b border-slate-200">
-      <h1 class="text-3xl font-bold text-slate-900">실시간 PDF 자료 조회 플랫폼</h1>
-      <p class="text-slate-500 mt-2 text-sm">업로드된 자료는 5분 동안만 조회 가능합니다.</p>
+      <h1 class="text-3xl font-bold text-slate-900">학생 피드백 자료 조회 플랫폼</h1>
+      <p class="text-slate-500 mt-2 text-sm">본인의 학번과 이름을 입력하여 제출된 피드백 자료를 확인하세요.</p>
     </header>
 
     <!-- 교사 영역 -->
@@ -66,7 +66,7 @@
 
       <button id="uploadBtn" onclick="processAndUpload()" 
               class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition shadow-md">
-        분할 및 실시간 공개 시작
+        분할 및 자료 공개 시작
       </button>
     </section>
 
@@ -180,25 +180,23 @@
           // 2. "2026학년도" 같은 연도 단어 제거
           let cleanText = rawText.replace(/\d{4}\s*학년도/g, '');
 
-          // 3. 2단계 스마트 파싱
-          // 3-1. 먼저 붙어있는 표준 패턴 시도 (예: 10101 홍길동)
+          // 3. 핀포인트 파싱
           let match = cleanText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
           
           let studentId = "";
           let studentName = "";
 
-          if (match) {
+          const ignoreWords = ['화담고등학교', '화담고등', '화담고', '화담', '고등학교', '학년도', '공통영어', '채점결과', '성취기준', '채점기준', '배점'];
+
+          if (match && !ignoreWords.includes(match[2])) {
             studentId = match[1];
             studentName = match[2];
           } else {
-            // 3-2. 실패 시: 5자리 숫자(학번)와 2~4자 한글(이름)을 각각 분리 추출
             const idMatches = cleanText.match(/\b\d{4,5}\b/g) || [];
             const validIds = idMatches.filter(id => id !== "2026" && id !== "2025");
             
             const nameMatches = cleanText.match(/[가-힣]{2,4}/g) || [];
-            const validNames = nameMatches.filter(name => 
-              !['화담고등학교', '학년도', '공통영어', '채점결과', '성취기준', '채점기준', '배점'].includes(name)
-            );
+            const validNames = nameMatches.filter(name => !ignoreWords.includes(name));
 
             studentId = validIds.length > 0 ? validIds[0] : `Unknown_${studentCount}`;
             studentName = validNames.length > 0 ? validNames[0] : `미인식_${startPage}페이지`;
@@ -232,8 +230,8 @@
             .getPublicUrl(filePath);
 
           const { error: insertError } = await db.from(TABLE_NAME).insert({
-            student_id: studentId,
-            student_name: studentName,
+            student_id: studentId.trim(),
+            student_name: studentName.trim(),
             file_url: publicUrlData.publicUrl
           });
 
@@ -249,7 +247,7 @@
     }
 
     // ==========================================
-    // 3. 학생 자료 조회 (5분 제한)
+    // 3. 학생 자료 조회 (시간 제한 없이 전체 기간 조회)
     // ==========================================
     async function searchPDF() {
       const studentId = document.getElementById('studentId').value.trim();
@@ -257,14 +255,12 @@
 
       if (!studentId || !studentName) return alert('학번과 이름을 모두 입력해 주세요.');
 
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-
+      // 시간 제한 없이 학번과 이름이 일치하는 가장 최근 생성된 1건을 검색
       const { data, error } = await db
         .from(TABLE_NAME)
         .select('*')
         .eq('student_id', studentId)
         .eq('student_name', studentName)
-        .gte('created_at', fiveMinutesAgo)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -282,7 +278,7 @@
         resultArea.classList.remove('hidden');
       } else {
         resultArea.classList.add('hidden');
-        alert('최근 5분 이내에 업로드된 본인의 자료가 없습니다.');
+        alert('입력하신 학번/이름에 해당하는 제출 자료가 없습니다.');
       }
     }
   </script>
