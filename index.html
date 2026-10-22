@@ -79,7 +79,7 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">학번 (4~5자리)</label>
-          <input type="text" id="studentId" placeholder="예: 20101" 
+          <input type="text" id="studentId" placeholder="예: 11001" 
                  class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
         </div>
         <div>
@@ -171,13 +171,17 @@
             combinedText += textContent.items.map(item => item.str).join(' ') + " ";
           }
 
-          // [핵심 정제 로직] "2026학년도" 등 양식 키워드 제거
-          let cleanText = combinedText.replace(/\d{4}\s*학년도/g, '');
-          cleanText = cleanText.replace(/학년|학번|이름|담임|결재/g, '');
+          // 🎯 [우측 상단 서식 핀포인트 추출 로직]
+          // 1순위: '화담고등학교 | 11001 강세은' 처럼 | (파이프/디바이더) 기호 우측 텍스트 우선 탐색
+          let match = combinedText.match(/[|ㅣ]\s*(\d{4,5})\s*([가-힣]{2,4})/);
 
-          // 정규식: 4~5자리 숫자 + 이름(한글 2~4자)
-          const match = cleanText.match(/\b(\d{4,5})\s*([가-힣]{2,4})\b/);
-          
+          // 2순위: 파이프 기호가 없을 경우 대비 (문서 연도/양식 단어 정제 후 추출)
+          if (!match) {
+            let cleanText = combinedText.replace(/\d{4}\s*학년도/g, '');
+            cleanText = cleanText.replace(/학년|학번|이름|담임|결재|화담고등학교/g, '');
+            match = cleanText.match(/\b(\d{4,5})\s*([가-힣]{2,4})\b/);
+          }
+
           let studentId = match ? match[1] : `Unknown_${studentCount}`;
           let studentName = match ? match[2] : `미인식_${startPage}페이지`;
 
