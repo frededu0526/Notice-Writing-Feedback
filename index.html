@@ -171,19 +171,22 @@
             combinedText += textContent.items.map(item => item.str).join(' ') + " ";
           }
 
-          // 🎯 [우측 상단 서식 핀포인트 추출 로직]
-          // 1순위: '화담고등학교 | 11001 강세은' 처럼 | (파이프/디바이더) 기호 우측 텍스트 우선 탐색
-          let match = combinedText.match(/[|ㅣ]\s*(\d{4,5})\s*([가-힣]{2,4})/);
+          // 🔍 F12 콘솔 확인용 로그
+          console.log(`[${startPage}~${endPage}p 원본 텍스트]:`, combinedText);
 
-          // 2순위: 파이프 기호가 없을 경우 대비 (문서 연도/양식 단어 정제 후 추출)
-          if (!match) {
-            let cleanText = combinedText.replace(/\d{4}\s*학년도/g, '');
-            cleanText = cleanText.replace(/학년|학번|이름|담임|결재|화담고등학교/g, '');
-            match = cleanText.match(/\b(\d{4,5})\s*([가-힣]{2,4})\b/);
-          }
+          // 1. "2026학년도", "2025학년도" 등 연도+학년도 단어 제거
+          let cleanText = combinedText.replace(/\d{4}\s*학년도/g, '');
+
+          // 2. 연속된 공백 하나로 정리
+          cleanText = cleanText.replace(/\s+/g, ' ');
+
+          // 3. 학번(4~5자리) + 이름(한글 2~4자) 탐색 (기호 없어도 인식)
+          let match = cleanText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
 
           let studentId = match ? match[1] : `Unknown_${studentCount}`;
           let studentName = match ? match[2] : `미인식_${startPage}페이지`;
+
+          console.log(`[파싱 결과]: 학번=${studentId}, 이름=${studentName}`);
 
           // 지정한 페이지 수 만큼 묶어서 새로운 PDF 생성
           const chunkPdfDoc = await PDFLib.PDFDocument.create();
