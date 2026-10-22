@@ -28,7 +28,7 @@
         <h2 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
           👨‍🏫 교사 전용 업로드
         </h2>
-        <input type="password" id="teacherPw" placeholder="교사 인증번호(기본: hdh2026eng)" 
+        <input type="password" id="teacherPw" placeholder="교사 인증번호(기본: 1234)" 
                class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       </div>
 
@@ -118,7 +118,7 @@
     // ==========================================
     async function processAndUpload() {
       const pw = document.getElementById('teacherPw').value;
-      if (pw !== '1234') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
+      if (pw !== 'hdh2026') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
 
       const file = pdfFileInput.files[0];
       if (!file) return alert('PDF 파일을 선택해 주세요.');
