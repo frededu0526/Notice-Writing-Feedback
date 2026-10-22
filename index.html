@@ -47,7 +47,7 @@ async function processAndUpload() {
           let cleanText = rawText.replace(/\d{4}\s*학년도/g, '');
 
           // 3. 만능 파싱 (줄바꿈/특수문자/공백 격파)
-          // 3-1. 먼저 붙어있는 표준 패턴 시도 (예: 10101 홍길동)
+          // 3-1. 먼저 붙어있는 표준 패턴 시도 (예: 11001 홍길동)
           let match = cleanText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
           
           let studentId = "";
