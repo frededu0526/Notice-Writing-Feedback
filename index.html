@@ -32,6 +32,23 @@
                class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       </div>
 
+      <!-- 옵션 선택: 페이지 수 분할 -->
+      <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <label for="pagesPerStudent" class="text-sm font-semibold text-slate-700">📄 학생 1명당 페이지 수:</label>
+        <select id="pagesPerStudent" class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="1">1 페이지씩 분할</option>
+          <option value="2">2 페이지씩 분할</option>
+          <option value="3">3 페이지씩 분할</option>
+          <option value="4" selected>4 페이지씩 분할</option>
+          <option value="5">5 페이지씩 분할</option>
+          <option value="6">6 페이지씩 분할</option>
+          <option value="7">7 페이지씩 분할</option>
+          <option value="8">8 페이지씩 분할</option>
+          <option value="9">9 페이지씩 분할</option>
+          <option value="10">10 페이지씩 분할</option>
+        </select>
+      </div>
+
       <!-- 드래그 앤 드롭 영역 -->
       <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-400 transition cursor-pointer bg-slate-50">
         <input type="file" id="pdfFile" accept="application/pdf" class="hidden">
@@ -61,8 +78,8 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-500 mb-1">학번 (5자리)</label>
-          <input type="text" id="studentId" placeholder="예: 10101" 
+          <label class="block text-xs font-semibold text-slate-500 mb-1">학번 (4~5자리)</label>
+          <input type="text" id="studentId" placeholder="예: 20101" 
                  class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
         </div>
         <div>
@@ -80,7 +97,7 @@
       <!-- 조회 결과 영역 -->
       <div id="resultArea" class="mt-6 hidden border-t pt-4">
         <h3 class="font-bold text-slate-800 mb-3">조회 결과</h3>
-        <iframe id="pdfViewer" class="w-full h-96 rounded-xl border border-slate-200"></iframe>
+        <iframe id="pdfViewer" class="w-full h-[500px] rounded-xl border border-slate-200"></iframe>
         <a id="downloadLink" target="_blank" 
            class="inline-block mt-3 text-sm text-emerald-600 font-semibold underline">
           새 창에서 PDF 다운로드
@@ -91,11 +108,11 @@
 
   <script>
     // ==========================================
-    // 1. Supabase 설정 (URL 수정 완료)
+    // 1. Supabase 설정
     // ==========================================
     const SUPABASE_URL = "https://imcdygaaczvbncsylzbg.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_kpyNd64pNtkCeSj_3mawlQ_N9wI1ctF";
-    const TABLE_NAME = "Notice_Wriing_Feedback_records"; // Supabase에 만든 테이블 이름과 대소문자까지 동일해야 함
+    const TABLE_NAME = "notice_writing_feedback"; // 소문자/언더바 권장 (또는 Supabase 테이블명)
     
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -123,6 +140,7 @@
       const file = pdfFileInput.files[0];
       if (!file) return alert('PDF 파일을 선택해 주세요.');
 
+      const pagesPerStudent = parseInt(document.getElementById('pagesPerStudent').value, 10);
       const progressArea = document.getElementById('progressArea');
       const progressBar = document.getElementById('progressBar');
       const statusText = document.getElementById('statusText');
@@ -136,56 +154,68 @@
 
         const srcPdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer);
 
-        for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-          statusText.textContent = `${pageNum}/${totalPages} 페이지 분석 및 처리 중...`;
-          progressBar.style.width = `${(pageNum / totalPages) * 100}%`;
+        let studentCount = 0;
 
-          // 텍스트 추출 (학번 / 이름 파싱)
-          const page = await pdfDoc.getPage(pageNum);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items.map(item => item.str).join(' ');
+        for (let startPage = 1; startPage <= totalPages; startPage += pagesPerStudent) {
+          studentCount++;
+          const endPage = Math.min(startPage + pagesPerStudent - 1, totalPages);
 
-          // 정규식: 5자리 숫자 + 이름(한글 2~4자)
-          const match = pageText.match(/\b(\d{5})\s*([가-힣]{2,4})\b/);
-          
-          if (match) {
-            const studentId = match[1];
-            const studentName = match[2];
+          statusText.textContent = `${startPage}~${endPage} 페이지 (학생 ${studentCount}) 분석 및 분할 중...`;
+          progressBar.style.width = `${(endPage / totalPages) * 100}%`;
 
-            // 단일 페이지 분할
-            const singlePageDoc = await PDFLib.PDFDocument.create();
-            const [copiedPage] = await singlePageDoc.copyPages(srcPdfLibDoc, [pageNum - 1]);
-            singlePageDoc.addPage(copiedPage);
-            const pdfBytes = await singlePageDoc.save();
-
-            // Storage 업로드
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const filePath = `${Date.now()}_${studentId}.pdf`;
-            
-            const { error: uploadError } = await db.storage
-              .from('pdf-files')
-              .upload(filePath, blob, { contentType: 'application/pdf' });
-
-            if (uploadError) throw uploadError;
-
-            // Public URL 가져오기
-            const { data: publicUrlData } = db.storage
-              .from('pdf-files')
-              .getPublicUrl(filePath);
-
-            // DB Insert
-            const { error: insertError } = await db.from(TABLE_NAME).insert({
-              student_id: studentId,
-              student_name: studentName,
-              file_url: publicUrlData.publicUrl
-            });
-
-            if (insertError) throw insertError;
+          // 묶음 페이지 전체의 텍스트 추출
+          let combinedText = "";
+          for (let p = startPage; p <= endPage; p++) {
+            const page = await pdfDoc.getPage(p);
+            const textContent = await page.getTextContent();
+            combinedText += textContent.items.map(item => item.str).join(' ') + " ";
           }
+
+          // 정규식: 4~5자리 숫자 + 이름(한글 2~4자)
+          const match = combinedText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
+          
+          let studentId = match ? match[1] : `Unknown_${studentCount}`;
+          let studentName = match ? match[2] : `미인식_${startPage}페이지`;
+
+          // 지정한 페이지 수 만큼 묶어서 새로운 PDF 생성
+          const chunkPdfDoc = await PDFLib.PDFDocument.create();
+          const pageIndexes = [];
+          for (let p = startPage - 1; p < endPage; p++) {
+            pageIndexes.push(p);
+          }
+          
+          const copiedPages = await chunkPdfDoc.copyPages(srcPdfLibDoc, pageIndexes);
+          copiedPages.forEach(p => chunkPdfDoc.addPage(p));
+          
+          const pdfBytes = await chunkPdfDoc.save();
+
+          // Storage 업로드
+          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          const filePath = `${Date.now()}_${studentId}_${startPage}.pdf`;
+          
+          const { error: uploadError } = await db.storage
+            .from('pdf-files')
+            .upload(filePath, blob, { contentType: 'application/pdf' });
+
+          if (uploadError) throw uploadError;
+
+          // Public URL 가져오기
+          const { data: publicUrlData } = db.storage
+            .from('pdf-files')
+            .getPublicUrl(filePath);
+
+          // DB Insert
+          const { error: insertError } = await db.from(TABLE_NAME).insert({
+            student_id: studentId,
+            student_name: studentName,
+            file_url: publicUrlData.publicUrl
+          });
+
+          if (insertError) throw insertError;
         }
 
         statusText.textContent = '모든 파일 업로드 완료!';
-        alert('실시간 공개가 완료되었습니다.');
+        alert(`총 ${studentCount}개 항목(페이지 묶음)이 실시간 공개되었습니다.`);
       } catch (err) {
         console.error(err);
         alert('처리 중 오류 발생: ' + err.message);
