@@ -91,10 +91,11 @@
 
   <script>
     // ==========================================
-    // 1. Supabase 설정 (본인 정보로 수정하세요)
+    // 1. Supabase 설정 (URL 수정 완료)
     // ==========================================
-    const SUPABASE_URL = "https://imcdygaaczvbncsylzbg.supabase.co/rest/v1/";
+    const SUPABASE_URL = "https://imcdygaaczvbncsylzbg.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_kpyNd64pNtkCeSj_3mawlQ_N9wI1ctF";
+    const TABLE_NAME = "Notice-Writing-Feedback"; // Supabase에 만든 테이블 이름과 대소문자까지 동일해야 함
     
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -173,11 +174,13 @@
               .getPublicUrl(filePath);
 
             // DB Insert
-            await db.from('Notice-Writing-Feedback').insert({
+            const { error: insertError } = await db.from(TABLE_NAME).insert({
               student_id: studentId,
               student_name: studentName,
               file_url: publicUrlData.publicUrl
             });
+
+            if (insertError) throw insertError;
           }
         }
 
@@ -202,7 +205,7 @@
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       const { data, error } = await db
-        .from('Notice-Writing-Feedback')
+        .from(TABLE_NAME)
         .select('*')
         .eq('student_id', studentId)
         .eq('student_name', studentName)
@@ -211,7 +214,7 @@
         .limit(1);
 
       if (error) {
-        alert('조회 중 오류가 발생했습니다.');
+        alert('조회 중 오류가 발생했습니다: ' + error.message);
         console.error(error);
         return;
       }
