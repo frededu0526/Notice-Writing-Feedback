@@ -173,7 +173,7 @@
               .getPublicUrl(filePath);
 
             // DB Insert
-            await db.from('pdf_records').insert({
+            await db.from('Notice-Writing-Feedback').insert({
               student_id: studentId,
               student_name: studentName,
               file_url: publicUrlData.publicUrl
@@ -202,7 +202,7 @@
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       const { data, error } = await db
-        .from('pdf_records')
+        .from('Notice-Writing-Feedback')
         .select('*')
         .eq('student_id', studentId)
         .eq('student_name', studentName)
