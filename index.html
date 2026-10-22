@@ -177,29 +177,29 @@
 
           const rawText = textItems.join(' ');
 
-          // 2. "2026학년도" 같은 연도 단어 제거
+          // 2. "2026학년도" 같은 연도 단어 사전 제거
           let cleanText = rawText.replace(/\d{4}\s*학년도/g, '');
 
-          // 3. 핀포인트 파싱
-          let match = cleanText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
-          
-          let studentId = "";
-          let studentName = "";
+          let studentId = `Unknown_${studentCount}`;
+          let studentName = `미인식_${startPage}페이지`;
 
-          const ignoreWords = ['화담고등학교', '화담고등', '화담고', '화담', '고등학교', '학년도', '공통영어', '채점결과', '성취기준', '채점기준', '배점'];
+          // 🎯 3. [학번 우측 로케이팅 방식 적용]
+          // 3-1. 학번 후보 탐색 (2025, 2026 연도 제외 4~5자리 숫자)
+          const idMatches = cleanText.match(/\b\d{4,5}\b/g) || [];
+          const validIds = idMatches.filter(id => id !== "2026" && id !== "2025");
 
-          if (match && !ignoreWords.includes(match[2])) {
-            studentId = match[1];
-            studentName = match[2];
-          } else {
-            const idMatches = cleanText.match(/\b\d{4,5}\b/g) || [];
-            const validIds = idMatches.filter(id => id !== "2026" && id !== "2025");
-            
-            const nameMatches = cleanText.match(/[가-힣]{2,4}/g) || [];
-            const validNames = nameMatches.filter(name => !ignoreWords.includes(name));
+          if (validIds.length > 0) {
+            studentId = validIds[0]; // 학번 확정 (예: 10101)
 
-            studentId = validIds.length > 0 ? validIds[0] : `Unknown_${studentCount}`;
-            studentName = validNames.length > 0 ? validNames[0] : `미인식_${startPage}페이지`;
+            // 3-2. 확정된 학번 위치 바로 우측 문자열 추출
+            const idIndex = cleanText.indexOf(studentId);
+            const afterIdText = cleanText.substring(idIndex + studentId.length);
+
+            // 3-3. 학번 오른쪽 텍스트에서 가장 먼저 오는 한글 2~4자(이름) 타겟팅
+            const nameMatch = afterIdText.match(/[가-힣]{2,4}/);
+            if (nameMatch) {
+              studentName = nameMatch[0]; // 이름 확정 (예: 홍길동)
+            }
           }
 
           // 4. PDF 분할 생성
@@ -247,7 +247,7 @@
     }
 
     // ==========================================
-    // 3. 학생 자료 조회 (시간 제한 없이 전체 기간 조회)
+    // 3. 학생 자료 조회 (전체 기간)
     // ==========================================
     async function searchPDF() {
       const studentId = document.getElementById('studentId').value.trim();
@@ -255,7 +255,6 @@
 
       if (!studentId || !studentName) return alert('학번과 이름을 모두 입력해 주세요.');
 
-      // 시간 제한 없이 학번과 이름이 일치하는 가장 최근 생성된 1건을 검색
       const { data, error } = await db
         .from(TABLE_NAME)
         .select('*')
