@@ -135,7 +135,7 @@
     // ==========================================
     async function processAndUpload() {
       const pw = document.getElementById('teacherPw').value;
-      if (pw !== 'hdh2026') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
+      if (pw !== '1234') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
 
       const file = pdfFileInput.files[0];
       if (!file) return alert('PDF 파일을 선택해 주세요.');
@@ -194,14 +194,14 @@
           const filePath = `${Date.now()}_${studentId}_${startPage}.pdf`;
           
           const { error: uploadError } = await db.storage
-            .from('Notice-Writing-Feedback')
+            .from('pdf-files')
             .upload(filePath, blob, { contentType: 'application/pdf' });
 
           if (uploadError) throw uploadError;
 
           // Public URL 가져오기
           const { data: publicUrlData } = db.storage
-            .from('Notice-Writing-Feedback')
+            .from('pdf-files')
             .getPublicUrl(filePath);
 
           // DB Insert
