@@ -194,14 +194,14 @@
           const filePath = `${Date.now()}_${studentId}_${startPage}.pdf`;
           
           const { error: uploadError } = await db.storage
-            .from('pdf-files')
+            .from('Notice-Writing-Feedback')
             .upload(filePath, blob, { contentType: 'application/pdf' });
 
           if (uploadError) throw uploadError;
 
           // Public URL 가져오기
           const { data: publicUrlData } = db.storage
-            .from('pdf-files')
+            .from('Notice-Writing-Feedback')
             .getPublicUrl(filePath);
 
           // DB Insert
