@@ -14,12 +14,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800">
-  <div class="max-w-4xl mx-auto p-6 space-y-8">
+  <!-- 전체 컨테이너 폭을 max-w-7xl로 확장 -->
+  <div class="max-w-7xl mx-auto p-4 sm:p-8 space-y-8">
     
     <!-- Header -->
     <header class="text-center py-6 border-b border-slate-200">
-      <h1 class="text-3xl font-bold text-slate-900">학생 피드백 자료 조회 플랫폼</h1>
-      <p class="text-slate-500 mt-2 text-sm">본인의 학번과 이름을 입력하여 제출된 피드백 자료를 확인하세요.</p>
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">학생 피드백 자료 조회 플랫폼</h1>
+      <p class="text-slate-500 mt-2 text-sm sm:text-base">본인의 학번과 이름을 입력하여 제출된 피드백 자료를 확인하세요.</p>
     </header>
 
     <!-- 교사 영역 -->
@@ -71,7 +72,7 @@
     </section>
 
     <!-- 학생 영역 -->
-    <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+    <section class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-4">
       <h2 class="text-xl font-bold text-emerald-600 border-b pb-3 flex items-center gap-2">
         🎓 학생 자료 조회
       </h2>
@@ -79,12 +80,12 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">학번 (4~5자리)</label>
-          <input type="text" id="studentId" placeholder="예: 10101" 
+          <input type="text" id="studentId" placeholder="예: 11001" 
                  class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-500 mb-1">이름</label>
-          <input type="text" id="studentName" placeholder="예: 홍길동" 
+          <input type="text" id="studentName" placeholder="예: 강세은" 
                  class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
         </div>
       </div>
@@ -94,14 +95,17 @@
         내 자료 조회하기
       </button>
 
-      <!-- 조회 결과 영역 -->
-      <div id="resultArea" class="mt-6 hidden border-t pt-4">
-        <h3 class="font-bold text-slate-800 mb-3">조회 결과</h3>
-        <iframe id="pdfViewer" class="w-full h-[500px] rounded-xl border border-slate-200"></iframe>
-        <a id="downloadLink" target="_blank" 
-           class="inline-block mt-3 text-sm text-emerald-600 font-semibold underline">
-          새 창에서 PDF 다운로드
-        </a>
+      <!-- 조회 결과 영역 (화면 전체 폭 활용) -->
+      <div id="resultArea" class="mt-6 hidden border-t pt-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-lg text-slate-800">조회 결과</h3>
+          <a id="downloadLink" target="_blank" 
+             class="text-sm bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-semibold border border-emerald-200 transition">
+            📥 새 창에서 PDF 다운로드
+          </a>
+        </div>
+        <!-- iframe 높이를 800px로 대폭 확장 -->
+        <iframe id="pdfViewer" class="w-full h-[800px] rounded-2xl border border-slate-300 shadow-inner"></iframe>
       </div>
     </section>
   </div>
@@ -183,22 +187,19 @@
           let studentId = `Unknown_${studentCount}`;
           let studentName = `미인식_${startPage}페이지`;
 
-          // 🎯 3. [학번 우측 로케이팅 방식 적용]
-          // 3-1. 학번 후보 탐색 (2025, 2026 연도 제외 4~5자리 숫자)
+          // 3. [학번 우측 위치 기반 로케이팅]
           const idMatches = cleanText.match(/\b\d{4,5}\b/g) || [];
           const validIds = idMatches.filter(id => id !== "2026" && id !== "2025");
 
           if (validIds.length > 0) {
-            studentId = validIds[0]; // 학번 확정 (예: 10101)
+            studentId = validIds[0];
 
-            // 3-2. 확정된 학번 위치 바로 우측 문자열 추출
             const idIndex = cleanText.indexOf(studentId);
             const afterIdText = cleanText.substring(idIndex + studentId.length);
 
-            // 3-3. 학번 오른쪽 텍스트에서 가장 먼저 오는 한글 2~4자(이름) 타겟팅
             const nameMatch = afterIdText.match(/[가-힣]{2,4}/);
             if (nameMatch) {
-              studentName = nameMatch[0]; // 이름 확정 (예: 홍길동)
+              studentName = nameMatch[0];
             }
           }
 
