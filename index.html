@@ -28,7 +28,7 @@
         <h2 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
           👨‍🏫 교사 전용 업로드
         </h2>
-        <input type="password" id="teacherPw" placeholder="교사 인증번호(기본: 1234)" 
+        <input type="password" id="teacherPw" placeholder="교사 인증번호" 
                class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
       </div>
 
@@ -108,11 +108,11 @@
 
   <script>
     // ==========================================
-    // 1. Supabase 설정
+    // 1. Supabase 설정 (주소 및 키 검증 완료)
     // ==========================================
     const SUPABASE_URL = "https://imcdygaaczvbncsylzbg.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_kpyNd64pNtkCeSj_3mawlQ_N9wI1ctF";
-    const TABLE_NAME = "pdf_records"; // 소문자/언더바 권장 (또는 Supabase 테이블명)
+    const TABLE_NAME = "notice_writing_feedback";
     
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -135,7 +135,7 @@
     // ==========================================
     async function processAndUpload() {
       const pw = document.getElementById('teacherPw').value;
-      if (pw !== '1234') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
+      if (pw !== 'hdh2026') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
 
       const file = pdfFileInput.files[0];
       if (!file) return alert('PDF 파일을 선택해 주세요.');
@@ -215,7 +215,7 @@
         }
 
         statusText.textContent = '모든 파일 업로드 완료!';
-        alert(`총 ${studentCount}개 항목(페이지 묶음)이 실시간 공개되었습니다.`);
+        alert(`총 ${studentCount}개 항목이 실시간 공개되었습니다.`);
       } catch (err) {
         console.error(err);
         alert('처리 중 오류 발생: ' + err.message);
@@ -231,7 +231,6 @@
 
       if (!studentId || !studentName) return alert('학번과 이름을 모두 입력해 주세요.');
 
-      // 현재 시각 기준 5분 전
       const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
       const { data, error } = await db
