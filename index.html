@@ -108,7 +108,7 @@
 
   <script>
     // ==========================================
-    // 1. Supabase 설정 (주소 및 키 검증 완료)
+    // 1. Supabase 설정
     // ==========================================
     const SUPABASE_URL = "https://imcdygaaczvbncsylzbg.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_kpyNd64pNtkCeSj_3mawlQ_N9wI1ctF";
@@ -171,8 +171,12 @@
             combinedText += textContent.items.map(item => item.str).join(' ') + " ";
           }
 
+          // [핵심 정제 로직] "2026학년도" 등 양식 키워드 제거
+          let cleanText = combinedText.replace(/\d{4}\s*학년도/g, '');
+          cleanText = cleanText.replace(/학년|학번|이름|담임|결재/g, '');
+
           // 정규식: 4~5자리 숫자 + 이름(한글 2~4자)
-          const match = combinedText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
+          const match = cleanText.match(/\b(\d{4,5})\s*([가-힣]{2,4})\b/);
           
           let studentId = match ? match[1] : `Unknown_${studentCount}`;
           let studentName = match ? match[2] : `미인식_${startPage}페이지`;
@@ -215,7 +219,7 @@
         }
 
         statusText.textContent = '모든 파일 업로드 완료!';
-        alert(`총 ${studentCount}개 항목이 실시간 공개되었습니다.`);
+        alert(`총 ${studentCount}개 항목이 성공적으로 분석되어 업로드되었습니다.`);
       } catch (err) {
         console.error(err);
         alert('처리 중 오류 발생: ' + err.message);
