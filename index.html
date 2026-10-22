@@ -171,22 +171,26 @@
             combinedText += textContent.items.map(item => item.str).join(' ') + " ";
           }
 
-          // 🔍 F12 콘솔 확인용 로그
-          console.log(`[${startPage}~${endPage}p 원본 텍스트]:`, combinedText);
-
-          // 1. "2026학년도", "2025학년도" 등 연도+학년도 단어 제거
+          // -----------------------------------------------------------
+          // 🎯 [수정된 파싱 로직] - 공백 쪼개짐 현상 완전 방지
+          // 1. 문서 헤더 단어 제거
           let cleanText = combinedText.replace(/\d{4}\s*학년도/g, '');
+          cleanText = cleanText.replace(/학년|학번|이름|담임|결재|화담고등학교/g, '');
 
-          // 2. 연속된 공백 하나로 정리
-          cleanText = cleanText.replace(/\s+/g, ' ');
+          // 2. 공백을 전부 제거한 텍스트 생성 (예: '1 1 0 0 1 강 세 은' -> '11001강세은')
+          let noSpaceText = cleanText.replace(/\s+/g, '');
 
-          // 3. 학번(4~5자리) + 이름(한글 2~4자) 탐색 (기호 없어도 인식)
-          let match = cleanText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
+          // 3. 탐색 시도
+          // [1순위] 공백 제거 텍스트에서 4~5자리 숫자 + 한글 2~4자 붙어있는 패턴 탐색
+          let match = noSpaceText.match(/(\d{4,5})([가-힣]{2,4})/);
+
+          // [2순위] 1순위 실패 시 기존 일반 띄어쓰기 텍스트에서 탐색
+          if (!match) {
+            match = cleanText.match(/(\d{4,5})\s*([가-힣]{2,4})/);
+          }
 
           let studentId = match ? match[1] : `Unknown_${studentCount}`;
           let studentName = match ? match[2] : `미인식_${startPage}페이지`;
-
-          console.log(`[파싱 결과]: 학번=${studentId}, 이름=${studentName}`);
 
           console.log(`[${startPage}p 분석 결과]: 학번=${studentId}, 이름=${studentName}`);
           // -----------------------------------------------------------
