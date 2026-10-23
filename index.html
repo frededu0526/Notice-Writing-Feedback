@@ -14,7 +14,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-800">
-  <!-- 전체 컨테이너 폭을 max-w-7xl로 확장 -->
   <div class="max-w-7xl mx-auto p-4 sm:p-8 space-y-8">
     
     <!-- Header -->
@@ -90,21 +89,29 @@
         </div>
       </div>
 
-      <button onclick="searchPDF()" 
+      <button onclick="searchPDFList()" 
               class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition shadow-md">
-        내 자료 조회하기
+        내 자료 목록 검색하기
       </button>
 
-      <!-- 조회 결과 영역 (화면 전체 폭 활용) -->
-      <div id="resultArea" class="mt-6 hidden border-t pt-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="font-bold text-lg text-slate-800">조회 결과</h3>
+      <!-- 조회 및 선택 영역 -->
+      <div id="resultArea" class="mt-6 hidden border-t pt-6 space-y-4">
+        
+        <!-- 파일 선택 드롭다운 -->
+        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <label for="fileSelect" class="text-sm font-bold text-emerald-900 whitespace-nowrap">📁 조회할 파일 선택:</label>
+            <select id="fileSelect" onchange="displaySelectedPDF()" 
+                    class="w-full sm:w-auto px-4 py-2 border border-emerald-300 rounded-lg text-sm bg-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </select>
+          </div>
           <a id="downloadLink" target="_blank" 
-             class="text-sm bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-semibold border border-emerald-200 transition">
+             class="text-sm bg-white hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-semibold border border-emerald-300 transition shadow-sm self-end sm:self-auto">
             📥 새 창에서 PDF 다운로드
           </a>
         </div>
-        <!-- iframe 높이를 800px로 대폭 확장 -->
+
+        <!-- iframe PDF 뷰어 -->
         <iframe id="pdfViewer" class="w-full h-[800px] rounded-2xl border border-slate-300 shadow-inner"></iframe>
       </div>
     </section>
@@ -129,6 +136,8 @@
     const pdfFileInput = document.getElementById('pdfFile');
     const fileNameDisplay = document.getElementById('fileName');
 
+    let studentDataList = []; // 학생의 조회된 전체 파일 목록 저장 변수
+
     dropZone.addEventListener('click', () => pdfFileInput.click());
     pdfFileInput.addEventListener('change', (e) => {
       if (e.target.files[0]) fileNameDisplay.textContent = e.target.files[0].name;
@@ -143,6 +152,9 @@
 
       const file = pdfFileInput.files[0];
       if (!file) return alert('PDF 파일을 선택해 주세요.');
+
+      // 원본 파일 이름 구하기 (확장자 제거)
+      const rawDocTitle = file.name.replace(/\.[^/.]+$/, "");
 
       const pagesPerStudent = parseInt(document.getElementById('pagesPerStudent').value, 10);
       const progressArea = document.getElementById('progressArea');
@@ -215,7 +227,7 @@
           
           const pdfBytes = await chunkPdfDoc.save();
 
-          // 5. Storage 업로드
+          // 5. Storage 업로드 (파일명에 원본문서제목 포함)
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
           const filePath = `${Date.now()}_${studentId}_${startPage}.pdf`;
           
@@ -225,15 +237,18 @@
 
           if (uploadError) throw uploadError;
 
-          // 6. Public URL 및 DB Insert
+          // 6. Public URL 가져오기
           const { data: publicUrlData } = db.storage
             .from('pdf-files')
             .getPublicUrl(filePath);
 
+          // URL 뒤에 원본 파일명을 해시(#) 형태로 붙여 파일 구분 정보로 활용
+          const fullFileUrl = `${publicUrlData.publicUrl}#title=${encodeURIComponent(rawDocTitle)}`;
+
           const { error: insertError } = await db.from(TABLE_NAME).insert({
             student_id: studentId.trim(),
             student_name: studentName.trim(),
-            file_url: publicUrlData.publicUrl
+            file_url: fullFileUrl
           });
 
           if (insertError) throw insertError;
@@ -248,21 +263,21 @@
     }
 
     // ==========================================
-    // 3. 학생 자료 조회 (전체 기간)
+    // 3. 학생 자료 목록 조회 및 드롭다운 생성
     // ==========================================
-    async function searchPDF() {
+    async function searchPDFList() {
       const studentId = document.getElementById('studentId').value.trim();
       const studentName = document.getElementById('studentName').value.trim();
 
       if (!studentId || !studentName) return alert('학번과 이름을 모두 입력해 주세요.');
 
+      // 학번과 이름에 일치하는 전체 목록 가져오기 (최신순)
       const { data, error } = await db
         .from(TABLE_NAME)
         .select('*')
         .eq('student_id', studentId)
         .eq('student_name', studentName)
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .order('created_at', { ascending: false });
 
       if (error) {
         alert('조회 중 오류가 발생했습니다: ' + error.message);
@@ -271,14 +286,47 @@
       }
 
       const resultArea = document.getElementById('resultArea');
+      const fileSelect = document.getElementById('fileSelect');
+
       if (data && data.length > 0) {
-        const fileUrl = data[0].file_url;
-        document.getElementById('pdfViewer').src = fileUrl;
-        document.getElementById('downloadLink').href = fileUrl;
+        studentDataList = data;
+        fileSelect.innerHTML = ''; // 드롭다운 초기화
+
+        // 목록을 드롭다운 옵션(option)으로 생성
+        data.forEach((item, index) => {
+          const date = new Date(item.created_at);
+          const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+          
+          // URL 뒤에 저장해둔 원본 파일제목 파싱
+          let docTitle = "피드백 자료";
+          if (item.file_url.includes('#title=')) {
+            docTitle = decodeURIComponent(item.file_url.split('#title=')[1]);
+          }
+
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = `[${dateStr}] ${docTitle}`;
+          fileSelect.appendChild(option);
+        });
+
         resultArea.classList.remove('hidden');
+        displaySelectedPDF(); // 첫 번째(최신) 파일 화면에 표시
       } else {
         resultArea.classList.add('hidden');
         alert('입력하신 학번/이름에 해당하는 제출 자료가 없습니다.');
+      }
+    }
+
+    // 드롭다운 선택 시 해당 PDF를 iframe에 표시
+    function displaySelectedPDF() {
+      const selectedIndex = document.getElementById('fileSelect').value;
+      const selectedItem = studentDataList[selectedIndex];
+
+      if (selectedItem) {
+        // pure URL (해시 # 제외 부분)
+        const pureUrl = selectedItem.file_url.split('#')[0];
+        document.getElementById('pdfViewer').src = pureUrl;
+        document.getElementById('downloadLink').href = pureUrl;
       }
     }
   </script>
