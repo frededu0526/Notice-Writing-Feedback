@@ -305,7 +305,7 @@
 
           const option = document.createElement('option');
           option.value = index;
-          option.textContent = `[${dateStr}] ${docTitle}`;
+          option.textContent = docTitle; // 앞의 날짜/시간 제외하고 파일명만 깔끔하게 출력
           fileSelect.appendChild(option);
         });
 
