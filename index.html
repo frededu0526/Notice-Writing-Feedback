@@ -161,15 +161,46 @@
 
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
+    // UI 엘리먼트 제어
     const dropZone = document.getElementById('dropZone');
     const pdfFileInput = document.getElementById('pdfFile');
     const fileNameDisplay = document.getElementById('fileName');
 
     let studentDataList = [];
 
+    // 드래그 앤 드롭 구현
     dropZone.addEventListener('click', () => pdfFileInput.click());
+    
     pdfFileInput.addEventListener('change', (e) => {
       if (e.target.files[0]) fileNameDisplay.textContent = e.target.files[0].name;
+    });
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => {
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => {
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        pdfFileInput.files = files;
+        fileNameDisplay.textContent = files[0].name;
+      }
     });
 
     // ==========================================
@@ -182,7 +213,6 @@
 
       if (!studentId || !studentName) return alert('학번과 이름을 입력해 주세요.');
 
-      // 1. 등록된 학생 비밀번호 조회
       const { data: cred, error: credErr } = await db
         .from(CREDENTIAL_TABLE)
         .select('*')
@@ -193,7 +223,6 @@
         return alert('인증 확인 중 오류가 발생했습니다: ' + credErr.message);
       }
 
-      // 2. 계정이 없는 경우 (최초 등록)
       if (!cred) {
         if (!studentPw) {
           return alert('최초 접속 학생입니다. 앞으로 사용할 비밀번호를 입력해 주세요!');
@@ -208,14 +237,12 @@
         if (insertErr) return alert('비밀번호 등록 실패: ' + insertErr.message);
         alert('비밀번호가 성공적으로 신규 등록되었습니다!');
       } else {
-        // 3. 기존 계정이 있는 경우 비밀번호 대조
         if (!studentPw) return alert('비밀번호를 입력해 주세요.');
         if (cred.password !== studentPw) {
           return alert('비밀번호가 올바르지 않습니다. (비밀번호를 잊으셨다면 교사에게 문의하세요)');
         }
       }
 
-      // 4. 인증 통과 시 PDF 목록 가져오기
       fetchPDFList(studentId, studentName);
     }
 
