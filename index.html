@@ -439,8 +439,8 @@
 
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
           
-          // 📁 Storage 폴더 경로 적용 (원본 파일명 폴더 생성)
-          const safeFolderName = rawDocTitle.replace(/[^\w\s가-힣-]/g, '_');
+          // 공백, 특수문자, 한글을 Storage 표준에 맞게 안전한 문자로 인코딩/변환
+          const safeFolderName = encodeURIComponent(rawDocTitle.replace(/\s+/g, '_'));
           const filePath = `${safeFolderName}/${Date.now()}_${studentId}_${startPage}.pdf`;
           
           const { error: uploadError } = await db.storage
