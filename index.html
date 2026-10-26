@@ -437,8 +437,15 @@
           
           const pdfBytes = await chunkPdfDoc.save();
 
+          // 5. Storage 업로드 (rawDocTitle 폴더 생성하여 저장)
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-          const filePath = `${Date.now()}_${studentId}_${startPage}.pdf`;
+          // 원본 파일명을 폴더명으로 활용 (특수문자 안전하게 제거/변환)
+          const safeFolderName = rawDocTitle.replace(/[^\w\s가-힣-]/g, '_');
+          const filePath = `${safeFolderName}/${Date.now()}_${studentId}_${startPage}.pdf`;
+          
+          const { error: uploadError } = await db.storage
+            .from('pdf-files')
+            .upload(filePath, blob, { contentType: 'application/pdf' });
           
           const { error: uploadError } = await db.storage
             .from('pdf-files')
