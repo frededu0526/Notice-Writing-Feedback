@@ -6,7 +6,482 @@
   <title>실시간 PDF 자료 조회 플랫폼</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Supabase JS CDN --><!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>실시간 PDF 자료 조회 플랫폼</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <!-- Supabase JS CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- pdf-lib CDN -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <!-- pdfjs-dist CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800">
+  <div class="max-w-7xl mx-auto p-4 sm:p-8 space-y-8">
+    
+    <!-- Header -->
+    <header class="text-center py-6 border-b border-slate-200">
+      <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">학생 피드백 자료 조회 플랫폼</h1>
+      <p class="text-slate-500 mt-2 text-sm sm:text-base">본인의 학번과 이름을 입력하여 제출된 피드백 자료를 확인하세요.</p>
+    </header>
+
+    <!-- 교사 영역 -->
+    <section class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h2 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
+          👨‍🏫 교사 전용 관리 & 업로드
+        </h2>
+        <div class="flex items-center gap-2">
+          <input type="password" id="teacherPw" placeholder="교사 인증번호" 
+                 class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <button onclick="toggleTeacherAdmin()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-2 rounded-lg font-semibold transition">
+            🔑 학생 비밀번호 관리
+          </button>
+        </div>
+      </div>
+
+      <!-- 교사 비밀번호 관리 패널 (기본 숨김) -->
+      <div id="teacherAdminPanel" class="hidden bg-slate-100 p-4 rounded-xl border border-slate-300 space-y-3">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center justify-between">
+          <span>📋 등록된 학생 비밀번호 목록</span>
+          <button onclick="loadStudentCredentials()" class="text-xs text-indigo-600 hover:underline">🔄 새로고침</button>
+        </h3>
+        <div class="max-h-60 overflow-y-auto bg-white rounded-lg border border-slate-200 p-2">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-50 border-b">
+              <tr>
+                <th class="p-2">학번</th>
+                <th class="p-2">이름</th>
+                <th class="p-2">설정된 비밀번호</th>
+                <th class="p-2 text-right">관리</th>
+              </tr>
+            </thead>
+            <tbody id="credentialTableBody">
+              <tr><td colspan="4" class="p-3 text-center text-slate-400">조회된 정보가 없습니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 옵션 선택: 페이지 수 분할 -->
+      <div class="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+        <label for="pagesPerStudent" class="text-sm font-semibold text-slate-700">📄 학생 1명당 페이지 수:</label>
+        <select id="pagesPerStudent" class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="1">1 페이지씩 분할</option>
+          <option value="2">2 페이지씩 분할</option>
+          <option value="3">3 페이지씩 분할</option>
+          <option value="4" selected>4 페이지씩 분할</option>
+          <option value="5">5 페이지씩 분할</option>
+          <option value="6">6 페이지씩 분할</option>
+          <option value="7">7 페이지씩 분할</option>
+          <option value="8">8 페이지씩 분할</option>
+          <option value="9">9 페이지씩 분할</option>
+          <option value="10">10 페이지씩 분할</option>
+        </select>
+      </div>
+
+      <!-- 드래그 앤 드롭 영역 -->
+      <div id="dropZone" class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-indigo-400 transition cursor-pointer bg-slate-50">
+        <input type="file" id="pdfFile" accept="application/pdf" class="hidden">
+        <p class="text-slate-600 font-medium">PDF 파일을 이곳에 드래그하거나 클릭하여 선택하세요.</p>
+        <p id="fileName" class="text-sm text-indigo-600 mt-2 font-semibold"></p>
+      </div>
+
+      <!-- 상태 및 진행률 -->
+      <div id="progressArea" class="hidden space-y-2">
+        <div class="w-full bg-slate-200 rounded-full h-2.5">
+          <div id="progressBar" class="bg-indigo-600 h-2.5 rounded-full w-0 transition-all duration-300"></div>
+        </div>
+        <p id="statusText" class="text-xs text-slate-500 text-center">처리 중...</p>
+      </div>
+
+      <button id="uploadBtn" onclick="processAndUpload()" 
+              class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 rounded-xl transition shadow-md">
+        분할 및 자료 공개 시작
+      </button>
+    </section>
+
+    <!-- 학생 영역 -->
+    <section class="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 space-y-4">
+      <h2 class="text-xl font-bold text-emerald-600 border-b pb-3 flex items-center gap-2">
+        🎓 학생 자료 조회
+      </h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">학번 (4~5자리)</label>
+          <input type="text" id="studentId" placeholder="예: 10101" 
+                 class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">이름</label>
+          <input type="text" id="studentName" placeholder="예: 홍길동" 
+                 class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">비밀번호</label>
+          <input type="password" id="studentPw" placeholder="최초 조회 시 비밀번호 생성" 
+                 class="w-full p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+      </div>
+
+      <button onclick="handleStudentSearch()" 
+              class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-xl transition shadow-md">
+        내 자료 목록 검색하기
+      </button>
+
+      <!-- 조회 및 선택 영역 -->
+      <div id="resultArea" class="mt-6 hidden border-t pt-6 space-y-4">
+        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2 w-full sm:w-auto">
+            <label for="fileSelect" class="text-sm font-bold text-emerald-900 whitespace-nowrap">📁 조회할 파일 선택:</label>
+            <select id="fileSelect" onchange="displaySelectedPDF()" 
+                    class="w-full sm:w-auto px-4 py-2 border border-emerald-300 rounded-lg text-sm bg-white font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500">
+            </select>
+          </div>
+          <a id="downloadLink" target="_blank" 
+             class="text-sm bg-white hover:bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg font-semibold border border-emerald-300 transition shadow-sm self-end sm:self-auto">
+            📥 새 창에서 PDF 다운로드
+          </a>
+        </div>
+
+        <iframe id="pdfViewer" class="w-full h-[800px] rounded-2xl border border-slate-300 shadow-inner"></iframe>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // ==========================================
+    // 1. Supabase 설정
+    // ==========================================
+    const SUPABASE_URL = "https://imcdygaaczvbncsylzbg.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_kpyNd64pNtkCeSj_3mawlQ_N9wI1ctF";
+    const TABLE_NAME = "notice_writing_feedback";
+    const CREDENTIAL_TABLE = "student_credentials";
+    
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+    // UI 엘리먼트 제어
+    const dropZone = document.getElementById('dropZone');
+    const pdfFileInput = document.getElementById('pdfFile');
+    const fileNameDisplay = document.getElementById('fileName');
+
+    let studentDataList = [];
+
+    // 드래그 앤 드롭 구현
+    dropZone.addEventListener('click', () => pdfFileInput.click());
+    
+    pdfFileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) fileNameDisplay.textContent = e.target.files[0].name;
+    });
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => {
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, () => {
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        pdfFileInput.files = files;
+        fileNameDisplay.textContent = files[0].name;
+      }
+    });
+
+    // ==========================================
+    // 2. 학생 인증 및 비밀번호 설정 로직
+    // ==========================================
+    async function handleStudentSearch() {
+      const studentId = document.getElementById('studentId').value.trim();
+      const studentName = document.getElementById('studentName').value.trim();
+      const studentPw = document.getElementById('studentPw').value.trim();
+
+      if (!studentId || !studentName) return alert('학번과 이름을 입력해 주세요.');
+
+      const { data: cred, error: credErr } = await db
+        .from(CREDENTIAL_TABLE)
+        .select('*')
+        .eq('student_id', studentId)
+        .maybeSingle();
+
+      if (credErr) {
+        return alert('인증 확인 중 오류가 발생했습니다: ' + credErr.message);
+      }
+
+      if (!cred) {
+        if (!studentPw) {
+          return alert('최초 접속 학생입니다. 앞으로 사용할 비밀번호를 입력해 주세요!');
+        }
+
+        const { error: insertErr } = await db.from(CREDENTIAL_TABLE).insert({
+          student_id: studentId,
+          student_name: studentName,
+          password: studentPw
+        });
+
+        if (insertErr) return alert('비밀번호 등록 실패: ' + insertErr.message);
+        alert('비밀번호가 성공적으로 신규 등록되었습니다!');
+      } else {
+        if (!studentPw) return alert('비밀번호를 입력해 주세요.');
+        if (cred.password !== studentPw) {
+          return alert('비밀번호가 올바르지 않습니다. (비밀번호를 잊으셨다면 교사에게 문의하세요)');
+        }
+      }
+
+      fetchPDFList(studentId, studentName);
+    }
+
+    async function fetchPDFList(studentId, studentName) {
+      const { data, error } = await db
+        .from(TABLE_NAME)
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('student_name', studentName)
+        .order('created_at', { ascending: false });
+
+      if (error) return alert('조회 오류: ' + error.message);
+
+      const resultArea = document.getElementById('resultArea');
+      const fileSelect = document.getElementById('fileSelect');
+
+      if (data && data.length > 0) {
+        studentDataList = data;
+        fileSelect.innerHTML = ''; 
+
+        data.forEach((item, index) => {
+          let docTitle = `피드백 자료 (${index + 1})`;
+          if (item.file_url.includes('#title=')) {
+            docTitle = decodeURIComponent(item.file_url.split('#title=')[1]);
+          }
+
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = docTitle;
+          fileSelect.appendChild(option);
+        });
+
+        resultArea.classList.remove('hidden');
+        displaySelectedPDF(); 
+      } else {
+        resultArea.classList.add('hidden');
+        alert('인증은 성공하였으나, 해당 학번으로 제출된 피드백 자료가 없습니다.');
+      }
+    }
+
+    function displaySelectedPDF() {
+      const selectedIndex = document.getElementById('fileSelect').value;
+      const selectedItem = studentDataList[selectedIndex];
+
+      if (selectedItem) {
+        const pureUrl = selectedItem.file_url.split('#')[0];
+        document.getElementById('pdfViewer').src = pureUrl;
+        document.getElementById('downloadLink').href = pureUrl;
+      }
+    }
+
+    // ==========================================
+    // 3. 교사 전용 관리자 패널 로직
+    // ==========================================
+    async function toggleTeacherAdmin() {
+      const pw = document.getElementById('teacherPw').value;
+      if (pw !== 'hdh2026') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
+
+      const panel = document.getElementById('teacherAdminPanel');
+      panel.classList.toggle('hidden');
+
+      if (!panel.classList.contains('hidden')) {
+        loadStudentCredentials();
+      }
+    }
+
+    async function loadStudentCredentials() {
+      const { data, error } = await db.from(CREDENTIAL_TABLE).select('*').order('student_id', { ascending: true });
+      const tbody = document.getElementById('credentialTableBody');
+
+      if (error) return alert('학생 계정 정보 로딩 실패: ' + error.message);
+
+      tbody.innerHTML = '';
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400">등록된 학생 비밀번호가 없습니다.</td></tr>';
+        return;
+      }
+
+      data.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = "border-b hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-2 font-semibold">${item.student_id}</td>
+          <td class="p-2">${item.student_name}</td>
+          <td class="p-2 text-indigo-600 font-mono font-bold">${item.password}</td>
+          <td class="p-2 text-right space-x-1">
+            <button onclick="editPassword('${item.student_id}', '${item.password}')" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[10px]">수정</button>
+            <button onclick="deleteCredential('${item.student_id}')" class="bg-rose-500 hover:bg-rose-600 text-white px-2 py-1 rounded text-[10px]">초기화</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function editPassword(studentId, currentPw) {
+      const newPw = prompt(`[학번: ${studentId}] 변경할 새 비밀번호를 입력해 주세요:`, currentPw);
+      if (newPw && newPw.trim() !== "") {
+        const { error } = await db.from(CREDENTIAL_TABLE).update({ password: newPw.trim() }).eq('student_id', studentId);
+        if (error) alert('수정 오류: ' + error.message);
+        else {
+          alert('비밀번호가 변경되었습니다.');
+          loadStudentCredentials();
+        }
+      }
+    }
+
+    async function deleteCredential(studentId) {
+      if (confirm(`[학번: ${studentId}] 등록된 비밀번호를 삭제(초기화)하시겠습니까?\n삭제 후 학생이 다시 비밀번호를 등록할 수 있습니다.`)) {
+        const { error } = await db.from(CREDENTIAL_TABLE).delete().eq('student_id', studentId);
+        if (error) alert('삭제 오류: ' + error.message);
+        else {
+          alert('비밀번호 정보가 초기화되었습니다.');
+          loadStudentCredentials();
+        }
+      }
+    }
+
+    // ==========================================
+    // 4. PDF 파싱 및 Supabase 업로드 (교사) - Storage 한글 안전 경로 반영
+    // ==========================================
+    async function processAndUpload() {
+      const pw = document.getElementById('teacherPw').value;
+      if (pw !== 'hdh2026') return alert('교사 인증 비밀번호가 올바르지 않습니다.');
+
+      const file = pdfFileInput.files[0];
+      if (!file) return alert('PDF 파일을 선택해 주세요.');
+
+      const rawDocTitle = file.name.replace(/\.[^/.]+$/, "");
+      const pagesPerStudent = parseInt(document.getElementById('pagesPerStudent').value, 10);
+      const progressArea = document.getElementById('progressArea');
+      const progressBar = document.getElementById('progressBar');
+      const statusText = document.getElementById('statusText');
+      
+      progressArea.classList.remove('hidden');
+      
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const totalPages = pdfDoc.numPages;
+
+        const srcPdfLibDoc = await PDFLib.PDFDocument.load(arrayBuffer);
+
+        let studentCount = 0;
+
+        for (let startPage = 1; startPage <= totalPages; startPage += pagesPerStudent) {
+          studentCount++;
+          const endPage = Math.min(startPage + pagesPerStudent - 1, totalPages);
+
+          statusText.textContent = `${startPage}~${endPage} 페이지 (학생 ${studentCount}) 분석 및 분할 중...`;
+          progressBar.style.width = `${(endPage / totalPages) * 100}%`;
+
+          let textItems = [];
+          for (let p = startPage; p <= endPage; p++) {
+            const page = await pdfDoc.getPage(p);
+            const textContent = await page.getTextContent();
+            textContent.items.forEach(item => {
+              if (item.str && item.str.trim()) {
+                textItems.push(item.str.trim());
+              }
+            });
+          }
+
+          const rawText = textItems.join(' ');
+          let cleanText = rawText.replace(/\d{4}\s*학년도/g, '');
+
+          let studentId = `Unknown_${studentCount}`;
+          let studentName = `미인식_${startPage}페이지`;
+
+          const idMatches = cleanText.match(/\b\d{4,5}\b/g) || [];
+          const validIds = idMatches.filter(id => id !== "2026" && id !== "2025");
+
+          if (validIds.length > 0) {
+            studentId = validIds[0];
+
+            const idIndex = cleanText.indexOf(studentId);
+            const afterIdText = cleanText.substring(idIndex + studentId.length);
+
+            const nameMatch = afterIdText.match(/[가-힣]{2,4}/);
+            if (nameMatch) {
+              studentName = nameMatch[0];
+            }
+          }
+
+          const chunkPdfDoc = await PDFLib.PDFDocument.create();
+          const pageIndexes = [];
+          for (let p = startPage - 1; p < endPage; p++) {
+            pageIndexes.push(p);
+          }
+          
+          const copiedPages = await chunkPdfDoc.copyPages(srcPdfLibDoc, pageIndexes);
+          copiedPages.forEach(p => chunkPdfDoc.addPage(p));
+          
+          const pdfBytes = await chunkPdfDoc.save();
+
+          const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          
+          // 📁 특수문자/공백만 언더바(_)로 바꾸고 한글/영문/숫자는 그대로 폴더명 사용 (Storage 자동 생성)
+          const safeFolderName = rawDocTitle.replace(/[^\w가-힣-]/g, '_');
+          const filePath = `${safeFolderName}/${Date.now()}_${studentId}_${startPage}.pdf`;
+          
+          const { error: uploadError } = await db.storage
+            .from('pdf-files')
+            .upload(filePath, blob, { contentType: 'application/pdf' });
+
+          if (uploadError) throw uploadError;
+
+          const { data: publicUrlData } = db.storage
+            .from('pdf-files')
+            .getPublicUrl(filePath);
+
+          const fullFileUrl = `${publicUrlData.publicUrl}#title=${encodeURIComponent(rawDocTitle)}`;
+
+          const { error: insertError } = await db.from(TABLE_NAME).insert({
+            student_id: studentId.trim(),
+            student_name: studentName.trim(),
+            file_url: fullFileUrl
+          });
+
+          if (insertError) throw insertError;
+        }
+
+        statusText.textContent = '모든 파일 업로드 완료!';
+        alert(`총 ${studentCount}개 항목 분할 및 업로드 완료!`);
+      } catch (err) {
+        console.error(err);
+        alert('처리 중 오류 발생: ' + err.message);
+      }
+    }
+  </script>
+</body>
+</html>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <!-- pdf-lib CDN -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
