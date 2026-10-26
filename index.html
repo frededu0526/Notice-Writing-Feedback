@@ -444,10 +444,6 @@
           const { error: uploadError } = await db.storage
             .from('pdf-files')
             .upload(filePath, blob, { contentType: 'application/pdf' });
-          
-          const { error: uploadError } = await db.storage
-            .from('pdf-files')
-            .upload(filePath, blob, { contentType: 'application/pdf' });
 
           if (uploadError) throw uploadError;
 
