@@ -361,7 +361,7 @@
     }
 
     // ==========================================
-    // 4. PDF 파싱 및 Supabase 업로드 (교사)
+    // 4. PDF 파싱 및 Supabase 업로드 (교사) - 원본파일명 폴더 정돈 적용
     // ==========================================
     async function processAndUpload() {
       const pw = document.getElementById('teacherPw').value;
@@ -438,6 +438,8 @@
           const pdfBytes = await chunkPdfDoc.save();
 
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+          
+          // 📁 Storage 폴더 경로 적용 (원본 파일명 폴더 생성)
           const safeFolderName = rawDocTitle.replace(/[^\w\s가-힣-]/g, '_');
           const filePath = `${safeFolderName}/${Date.now()}_${studentId}_${startPage}.pdf`;
           
