@@ -32,31 +32,62 @@
           <input type="password" id="teacherPw" placeholder="교사 인증번호" 
                  class="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
           <button onclick="toggleTeacherAdmin()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs px-3 py-2 rounded-lg font-semibold transition">
-            🔑 학생 비밀번호 관리
+            ⚙️ 교사 관리 패널
           </button>
         </div>
       </div>
 
-      <!-- 교사 비밀번호 관리 패널 (기본 숨김) -->
-      <div id="teacherAdminPanel" class="hidden bg-slate-100 p-4 rounded-xl border border-slate-300 space-y-3">
-        <h3 class="font-bold text-slate-800 text-sm flex items-center justify-between">
-          <span>📋 등록된 학생 비밀번호 목록</span>
-          <button onclick="loadStudentCredentials()" class="text-xs text-indigo-600 hover:underline">🔄 새로고침</button>
-        </h3>
-        <div class="max-h-60 overflow-y-auto bg-white rounded-lg border border-slate-200 p-2">
-          <table class="w-full text-xs text-left">
-            <thead class="bg-slate-50 border-b">
-              <tr>
-                <th class="p-2">학번</th>
-                <th class="p-2">이름</th>
-                <th class="p-2">설정된 비밀번호</th>
-                <th class="p-2 text-right">관리</th>
-              </tr>
-            </thead>
-            <tbody id="credentialTableBody">
-              <tr><td colspan="4" class="p-3 text-center text-slate-400">조회된 정보가 없습니다.</td></tr>
-            </tbody>
-          </table>
+      <!-- 교사통합 관리 패널 (기본 숨김) -->
+      <div id="teacherAdminPanel" class="hidden bg-slate-100 p-4 rounded-xl border border-slate-300 space-y-4">
+        <div class="flex gap-2 border-b border-slate-300 pb-2">
+          <button id="btnTab1" onclick="switchAdminTab('credentials')" class="px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white">🔑 학생 비밀번호 관리</button>
+          <button id="btnTab2" onclick="switchAdminTab('documents')" class="px-3 py-1 text-xs font-bold rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300">📂 업로드 자료 공개 관리</button>
+        </div>
+
+        <!-- 탭 1: 학생 비밀번호 목록 -->
+        <div id="tabCredentials" class="space-y-2">
+          <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+            <span>📋 등록된 학생 비밀번호 목록</span>
+            <button onclick="loadStudentCredentials()" class="text-indigo-600 hover:underline">🔄 새로고침</button>
+          </div>
+          <div class="max-h-52 overflow-y-auto bg-white rounded-lg border border-slate-200 p-2">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 border-b">
+                <tr>
+                  <th class="p-2">학번</th>
+                  <th class="p-2">이름</th>
+                  <th class="p-2">설정된 비밀번호</th>
+                  <th class="p-2 text-right">관리</th>
+                </tr>
+              </thead>
+              <tbody id="credentialTableBody">
+                <tr><td colspan="4" class="p-3 text-center text-slate-400">조회된 정보가 없습니다.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 탭 2: 업로드 자료 공개/비공개 설정 -->
+        <div id="tabDocuments" class="hidden space-y-2">
+          <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+            <span>📁 등록된 자료 및 공개 여부 스위치</span>
+            <button onclick="loadUploadedDocuments()" class="text-indigo-600 hover:underline">🔄 새로고침</button>
+          </div>
+          <div class="max-h-52 overflow-y-auto bg-white rounded-lg border border-slate-200 p-2">
+            <table class="w-full text-xs text-left">
+              <thead class="bg-slate-50 border-b">
+                <tr>
+                  <th class="p-2">자료 제목</th>
+                  <th class="p-2">등록 건수</th>
+                  <th class="p-2">공개 상태</th>
+                  <th class="p-2 text-right">관리</th>
+                </tr>
+              </thead>
+              <tbody id="documentTableBody">
+                <tr><td colspan="4" class="p-3 text-center text-slate-400">조회된 자료가 없습니다.</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -104,7 +135,7 @@
         </div>
       </div>
 
-      <!-- 명단 기반 매칭 옵션 영역 (기본 숨김) -->
+      <!-- 명단 기반 매칭 옵션 영역 -->
       <div id="listMatchingArea" class="hidden bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-4">
         <div>
           <label class="block text-xs font-bold text-indigo-900 mb-1">1. 전체 학생 명단 입력 (학번 이름 형식으로 한 줄씩 입력)</label>
@@ -113,7 +144,6 @@
                     oninput="parseRawList()"></textarea>
         </div>
 
-        <!-- 세부 필터 옵션 -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-white p-3 rounded-lg border border-indigo-200">
           <div>
             <label class="block text-[11px] font-semibold text-slate-600 mb-1">🏫 반별 선택 (앞 3자리 학번)</label>
@@ -136,7 +166,6 @@
           </div>
         </div>
 
-        <!-- 파싱된 학생 선택 체크박스 목록 -->
         <div>
           <p class="text-xs font-bold text-indigo-900 mb-2">2. 순서 매칭 대상 학생 선택 (<span id="selectedCount">0</span>명 선택됨)</p>
           <div id="studentCheckList" class="max-h-40 overflow-y-auto bg-white p-2 rounded-lg border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
@@ -234,11 +263,10 @@
     const fileNameDisplay = document.getElementById('fileName');
 
     let studentDataList = [];
-    let parsedStudentList = []; // 명단 입력 데이터 저장
+    let parsedStudentList = [];
 
-    // 드래그 앤 드롭 구현
+    // 드래그 앤 드롭
     dropZone.addEventListener('click', () => pdfFileInput.click());
-    
     pdfFileInput.addEventListener('change', (e) => {
       if (e.target.files[0]) fileNameDisplay.textContent = e.target.files[0].name;
     });
@@ -251,20 +279,15 @@
     });
 
     ['dragenter', 'dragover'].forEach(eventName => {
-      dropZone.addEventListener(eventName, () => {
-        dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
-      }, false);
+      dropZone.addEventListener(() => dropZone.classList.add('border-indigo-500', 'bg-indigo-50'), false);
     });
 
     ['dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(eventName, () => {
-        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
-      }, false);
+      dropZone.addEventListener(() => dropZone.classList.remove('border-indigo-500', 'bg-indigo-50'), false);
     });
 
     dropZone.addEventListener('drop', (e) => {
-      const dt = e.dataTransfer;
-      const files = dt.files;
+      const files = e.dataTransfer.files;
       if (files && files.length > 0) {
         pdfFileInput.files = files;
         fileNameDisplay.textContent = files[0].name;
@@ -272,16 +295,13 @@
     });
 
     // ==========================================
-    // 2. 명단 관리 및 파싱 로직
+    // 2. 명단 관리
     // ==========================================
     function toggleMatchMode() {
       const mode = document.querySelector('input[name="matchMode"]:checked').value;
       const area = document.getElementById('listMatchingArea');
-      if (mode === 'list') {
-        area.classList.remove('hidden');
-      } else {
-        area.classList.add('hidden');
-      }
+      if (mode === 'list') area.classList.remove('hidden');
+      else area.classList.add('hidden');
     }
 
     function parseRawList() {
@@ -294,14 +314,9 @@
         if (!trimmed) return;
         const parts = trimmed.split(/\s+/);
         if (parts.length >= 2) {
-          parsedStudentList.push({
-            id: parts[0],
-            name: parts[1],
-            selected: true
-          });
+          parsedStudentList.push({ id: parts[0], name: parts[1], selected: true });
         }
       });
-
       renderCheckList();
     }
 
@@ -323,7 +338,6 @@
         `;
         container.appendChild(label);
       });
-
       updateSelectedCount();
     }
 
@@ -340,19 +354,14 @@
     function applyClassFilter() {
       const classVal = document.getElementById('classFilter').value.trim();
       if (!classVal) return alert('학급 번호를 입력해 주세요.');
-      
-      parsedStudentList.forEach(st => {
-        st.selected = st.id.startsWith(classVal);
-      });
+      parsedStudentList.forEach(st => st.selected = st.id.startsWith(classVal));
       renderCheckList();
     }
 
     function applyRangeFilter() {
       const start = parseInt(document.getElementById('rangeStart').value.trim(), 10);
       const end = parseInt(document.getElementById('rangeEnd').value.trim(), 10);
-
-      if (isNaN(start) || isNaN(end)) return alert('학번 범위를 숫자로 올바르게 입력해 주세요.');
-
+      if (isNaN(start) || isNaN(end)) return alert('학번 범위를 올바르게 입력해 주세요.');
       parsedStudentList.forEach(st => {
         const stNum = parseInt(st.id, 10);
         st.selected = (stNum >= start && stNum <= end);
@@ -366,7 +375,7 @@
     }
 
     // ==========================================
-    // 3. 학생 인증 및 비밀번호 설정 로직
+    // 3. 학생 인증 및 자료 조회 (공개 상태 필터링 적용)
     // ==========================================
     async function handleStudentSearch() {
       const studentId = document.getElementById('studentId').value.trim();
@@ -381,28 +390,18 @@
         .eq('student_id', studentId)
         .maybeSingle();
 
-      if (credErr) {
-        return alert('인증 확인 중 오류가 발생했습니다: ' + credErr.message);
-      }
+      if (credErr) return alert('인증 확인 중 오류 발생: ' + credErr.message);
 
       if (!cred) {
-        if (!studentPw) {
-          return alert('최초 접속 학생입니다. 앞으로 사용할 비밀번호를 입력해 주세요!');
-        }
-
+        if (!studentPw) return alert('최초 접속 학생입니다. 앞으로 사용할 비밀번호를 입력해 주세요!');
         const { error: insertErr } = await db.from(CREDENTIAL_TABLE).insert({
-          student_id: studentId,
-          student_name: studentName,
-          password: studentPw
+          student_id: studentId, student_name: studentName, password: studentPw
         });
-
         if (insertErr) return alert('비밀번호 등록 실패: ' + insertErr.message);
         alert('비밀번호가 성공적으로 신규 등록되었습니다!');
       } else {
         if (!studentPw) return alert('비밀번호를 입력해 주세요.');
-        if (cred.password !== studentPw) {
-          return alert('비밀번호가 올바르지 않습니다. (비밀번호를 잊으셨다면 교사에게 문의하세요)');
-        }
+        if (cred.password !== studentPw) return alert('비밀번호가 올바르지 않습니다.');
       }
 
       fetchPDFList(studentId, studentName);
@@ -421,11 +420,14 @@
       const resultArea = document.getElementById('resultArea');
       const fileSelect = document.getElementById('fileSelect');
 
-      if (data && data.length > 0) {
-        studentDataList = data;
+      // is_public 이 false 인 것은 숨김 처리
+      const publicData = (data || []).filter(item => item.is_public !== false);
+
+      if (publicData.length > 0) {
+        studentDataList = publicData;
         fileSelect.innerHTML = ''; 
 
-        data.forEach((item, index) => {
+        publicData.forEach((item, index) => {
           let docTitle = `피드백 자료 (${index + 1})`;
           if (item.file_url.includes('#title=')) {
             docTitle = decodeURIComponent(item.file_url.split('#title=')[1]);
@@ -441,14 +443,13 @@
         displaySelectedPDF(); 
       } else {
         resultArea.classList.add('hidden');
-        alert('인증은 성공하였으나, 해당 학번으로 제출된 피드백 자료가 없습니다.');
+        alert('인증은 성공하였으나, 현재 공개 중인 피드백 자료가 없습니다.');
       }
     }
 
     function displaySelectedPDF() {
       const selectedIndex = document.getElementById('fileSelect').value;
       const selectedItem = studentDataList[selectedIndex];
-
       if (selectedItem) {
         const pureUrl = selectedItem.file_url.split('#')[0];
         document.getElementById('pdfViewer').src = pureUrl;
@@ -457,7 +458,7 @@
     }
 
     // ==========================================
-    // 4. 교사 전용 관리자 패널 로직
+    // 4. 교사 관리 패널 & 자료 공개/비공개 스위치
     // ==========================================
     async function toggleTeacherAdmin() {
       const pw = document.getElementById('teacherPw').value;
@@ -468,14 +469,33 @@
 
       if (!panel.classList.contains('hidden')) {
         loadStudentCredentials();
+        loadUploadedDocuments();
+      }
+    }
+
+    function switchAdminTab(tabName) {
+      const tab1 = document.getElementById('tabCredentials');
+      const tab2 = document.getElementById('tabDocuments');
+      const btn1 = document.getElementById('btnTab1');
+      const btn2 = document.getElementById('btnTab2');
+
+      if (tabName === 'credentials') {
+        tab1.classList.remove('hidden');
+        tab2.classList.add('hidden');
+        btn1.className = "px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white";
+        btn2.className = "px-3 py-1 text-xs font-bold rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300";
+      } else {
+        tab1.classList.add('hidden');
+        tab2.classList.remove('hidden');
+        btn2.className = "px-3 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white";
+        btn1.className = "px-3 py-1 text-xs font-bold rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300";
       }
     }
 
     async function loadStudentCredentials() {
       const { data, error } = await db.from(CREDENTIAL_TABLE).select('*').order('student_id', { ascending: true });
       const tbody = document.getElementById('credentialTableBody');
-
-      if (error) return alert('학생 계정 정보 로딩 실패: ' + error.message);
+      if (error) return alert('학생 계정 로딩 실패: ' + error.message);
 
       tbody.innerHTML = '';
       if (!data || data.length === 0) {
@@ -500,30 +520,110 @@
     }
 
     async function editPassword(studentId, currentPw) {
-      const newPw = prompt(`[학번: ${studentId}] 변경할 새 비밀번호를 입력해 주세요:`, currentPw);
+      const newPw = prompt(`[학번: ${studentId}] 변경할 새 비밀번호:`, currentPw);
       if (newPw && newPw.trim() !== "") {
         const { error } = await db.from(CREDENTIAL_TABLE).update({ password: newPw.trim() }).eq('student_id', studentId);
         if (error) alert('수정 오류: ' + error.message);
-        else {
-          alert('비밀번호가 변경되었습니다.');
-          loadStudentCredentials();
-        }
+        else { alert('비밀번호가 변경되었습니다.'); loadStudentCredentials(); }
       }
     }
 
     async function deleteCredential(studentId) {
-      if (confirm(`[학번: ${studentId}] 등록된 비밀번호를 삭제(초기화)하시겠습니까?\n삭제 후 학생이 다시 비밀번호를 등록할 수 있습니다.`)) {
+      if (confirm(`[학번: ${studentId}] 비밀번호를 초기화하시겠습니까?`)) {
         const { error } = await db.from(CREDENTIAL_TABLE).delete().eq('student_id', studentId);
         if (error) alert('삭제 오류: ' + error.message);
+        else { alert('초기화되었습니다.'); loadStudentCredentials(); }
+      }
+    }
+
+    // 업로드된 자료 제목별 통계 및 공개 토글 스위치 로직
+    async function loadUploadedDocuments() {
+      const { data, error } = await db.from(TABLE_NAME).select('*');
+      const tbody = document.getElementById('documentTableBody');
+      if (error) return alert('자료 로딩 실패: ' + error.message);
+
+      tbody.innerHTML = '';
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-center text-slate-400">등록된 자료가 없습니다.</td></tr>';
+        return;
+      }
+
+      // #title= 기반 그룹화
+      const docGroups = {};
+      data.forEach(item => {
+        let title = "이름 없는 자료";
+        if (item.file_url.includes('#title=')) {
+          title = decodeURIComponent(item.file_url.split('#title=')[1]);
+        }
+        if (!docGroups[title]) {
+          docGroups[title] = { count: 0, isPublic: item.is_public !== false, items: [] };
+        }
+        docGroups[title].count++;
+        docGroups[title].items.push(item);
+      });
+
+      Object.keys(docGroups).forEach(title => {
+        const group = docGroups[title];
+        const tr = document.createElement('tr');
+        tr.className = "border-b hover:bg-slate-50";
+        tr.innerHTML = `
+          <td class="p-2 font-semibold text-slate-800">${title}</td>
+          <td class="p-2 text-slate-500">${group.count}건</td>
+          <td class="p-2">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${group.isPublic ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}">
+              ${group.isPublic ? '공개 중' : '비공개 (중단)'}
+            </span>
+          </td>
+          <td class="p-2 text-right space-x-1">
+            <button onclick="toggleDocPublic('${encodeURIComponent(title)}', ${!group.isPublic})" 
+                    class="px-2 py-1 rounded text-[10px] text-white ${group.isPublic ? 'bg-rose-500 hover:bg-rose-600' : 'bg-emerald-600 hover:bg-emerald-700'}">
+              ${group.isPublic ? '🔒 비공개로 전환' : '🔓 공개로 전환'}
+            </button>
+            <button onclick="deleteDocGroup('${encodeURIComponent(title)}')" class="bg-slate-400 hover:bg-slate-500 text-white px-2 py-1 rounded text-[10px]">삭제</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function toggleDocPublic(encodedTitle, nextPublicState) {
+      const title = decodeURIComponent(encodedTitle);
+      const { data } = await db.from(TABLE_NAME).select('id, file_url');
+      const targetIds = (data || []).filter(item => {
+        return item.file_url.includes(`#title=${encodeURIComponent(title)}`) || item.file_url.includes(`#title=${title}`);
+      }).map(i => i.id);
+
+      if (targetIds.length > 0) {
+        const { error } = await db.from(TABLE_NAME).update({ is_public: nextPublicState }).in('id', targetIds);
+        if (error) alert('상태 변경 오류: ' + error.message);
         else {
-          alert('비밀번호 정보가 초기화되었습니다.');
-          loadStudentCredentials();
+          alert(`'${title}' 자료의 공개 상태가 변경되었습니다.`);
+          loadUploadedDocuments();
+        }
+      }
+    }
+
+    async function deleteDocGroup(encodedTitle) {
+      const title = decodeURIComponent(encodedTitle);
+      if (confirm(`'${title}' 자료 전체 항목을 DB에서 삭제(공개 취소)하시겠습니까?`)) {
+        const { data } = await db.from(TABLE_NAME).select('id, file_url');
+        const targetIds = (data || []).filter(item => {
+          return item.file_url.includes(`#title=${encodeURIComponent(title)}`) || item.file_url.includes(`#title=${title}`);
+        }).map(i => i.id);
+
+        if (targetIds.length > 0) {
+          const { error } = await db.from(TABLE_NAME).delete().in('id', targetIds);
+          if (error) alert('삭제 오류: ' + error.message);
+          else {
+            alert('자료 삭제가 완료되었습니다.');
+            loadUploadedDocuments();
+          }
         }
       }
     }
 
     // ==========================================
-    // 5. PDF 파싱 및 Supabase 업로드 (교사)
+    // 5. PDF 파싱 및 Supabase 업로드
     // ==========================================
     async function processAndUpload() {
       const pw = document.getElementById('teacherPw').value;
@@ -532,11 +632,9 @@
       const file = pdfFileInput.files[0];
       if (!file) return alert('PDF 파일을 선택해 주세요.');
 
-      // 학생용 표시 제목
       const customTitleInput = document.getElementById('customDocTitle').value.trim();
       const rawDocTitle = customTitleInput !== "" ? customTitleInput : file.name.replace(/\.[^/.]+$/, "");
 
-      // Storage 전용 지정 폴더명 (영문/숫자 인코딩)
       const folderKeyInput = document.getElementById('customFolderKey').value.trim();
       const uploadBatchId = Date.now();
       
@@ -583,15 +681,12 @@
           let studentName = `미인식_${startPage}페이지`;
 
           if (matchMode === 'auto') {
-            // 텍스트 자동 인식
             let textItems = [];
             for (let p = startPage; p <= endPage; p++) {
               const page = await pdfDoc.getPage(p);
               const textContent = await page.getTextContent();
               textContent.items.forEach(item => {
-                if (item.str && item.str.trim()) {
-                  textItems.push(item.str.trim());
-                }
+                if (item.str && item.str.trim()) textItems.push(item.str.trim());
               });
             }
 
@@ -606,12 +701,9 @@
               const idIndex = cleanText.indexOf(studentId);
               const afterIdText = cleanText.substring(idIndex + studentId.length);
               const nameMatch = afterIdText.match(/[가-힣]{2,4}/);
-              if (nameMatch) {
-                studentName = nameMatch[0];
-              }
+              if (nameMatch) studentName = nameMatch[0];
             }
           } else {
-            // 명단 순서 1:1 매칭
             const targetStudent = activeStudentList[studentCount - 1];
             if (targetStudent) {
               studentId = targetStudent.id;
@@ -624,18 +716,14 @@
 
           const chunkPdfDoc = await PDFLib.PDFDocument.create();
           const pageIndexes = [];
-          for (let p = startPage - 1; p < endPage; p++) {
-            pageIndexes.push(p);
-          }
+          for (let p = startPage - 1; p < endPage; p++) pageIndexes.push(p);
           
           const copiedPages = await chunkPdfDoc.copyPages(srcPdfLibDoc, pageIndexes);
           copiedPages.forEach(p => chunkPdfDoc.addPage(p));
           
           const pdfBytes = await chunkPdfDoc.save();
-
           const blob = new Blob([pdfBytes], { type: 'application/pdf' });
           
-          // 지정된 Storage 경로에 저장
           const filePath = `${safeFolderKey}/${studentId}_${startPage}.pdf`;
           
           const { error: uploadError } = await db.storage
@@ -653,7 +741,8 @@
           const { error: insertError } = await db.from(TABLE_NAME).insert({
             student_id: studentId.trim(),
             student_name: studentName.trim(),
-            file_url: fullFileUrl
+            file_url: fullFileUrl,
+            is_public: true // 기본 공개 상태로 저장
           });
 
           if (insertError) throw insertError;
