@@ -265,10 +265,13 @@
     let studentDataList = [];
     let parsedStudentList = [];
 
-    // 드래그 앤 드롭
+    // 드래그 앤 드롭 구현 (안전한 파일 할당 처리)
     dropZone.addEventListener('click', () => pdfFileInput.click());
+    
     pdfFileInput.addEventListener('change', (e) => {
-      if (e.target.files[0]) fileNameDisplay.textContent = e.target.files[0].name;
+      if (e.target.files && e.target.files[0]) {
+        fileNameDisplay.textContent = `선택된 파일: ${e.target.files[0].name}`;
+      }
     });
 
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -279,18 +282,35 @@
     });
 
     ['dragenter', 'dragover'].forEach(eventName => {
-      dropZone.addEventListener(() => dropZone.classList.add('border-indigo-500', 'bg-indigo-50'), false);
+      dropZone.addEventListener(eventName, () => {
+        dropZone.classList.add('border-indigo-500', 'bg-indigo-50');
+      }, false);
     });
 
     ['dragleave', 'drop'].forEach(eventName => {
-      dropZone.addEventListener(() => dropZone.classList.remove('border-indigo-500', 'bg-indigo-50'), false);
+      dropZone.addEventListener(eventName, () => {
+        dropZone.classList.remove('border-indigo-500', 'bg-indigo-50');
+      }, false);
     });
 
     dropZone.addEventListener('drop', (e) => {
-      const files = e.dataTransfer.files;
+      const dt = e.dataTransfer;
+      const files = dt.files;
+
       if (files && files.length > 0) {
-        pdfFileInput.files = files;
-        fileNameDisplay.textContent = files[0].name;
+        // PDF 파일 여부 체크
+        if (files[0].type !== 'application/pdf' && !files[0].name.endsWith('.pdf')) {
+          alert('PDF 파일만 업로드할 수 있습니다.');
+          return;
+        }
+
+        // DataTransfer를 사용해 input.files에 안전하게 전달
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(files[0]);
+        pdfFileInput.files = dataTransfer.files;
+
+        // UI 업데이트
+        fileNameDisplay.textContent = `선택된 파일: ${files[0].name}`;
       }
     });
 
